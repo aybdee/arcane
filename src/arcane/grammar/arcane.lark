@@ -1,0 +1,47 @@
+start : program
+program : statement* 
+statement : definition | animate_declaration NEWLINE
+definition : "Define" IDENT "as" expression math_transform
+expression : math_function | algebraic_expression
+
+
+
+animate_declaration: "@" (definition | IDENT | (IDENT | math_function) math_transform)
+
+sweep: "from" NUMBER "to" NUMBER
+multi_sweep: "with" IDENT (sweep ("," IDENT sweep)* | assign ("," assign)*)*
+assign: IDENT "="  numerical_expression
+math_transform: [sweep | multi_sweep]
+
+
+
+math_function: "f" "("(IDENT) ("," IDENT)*")" "=" algebraic_expression
+algebraic_expression : algebraic_term ((ADD | SUB) algebraic_term)*
+algebraic_term      : algebraic_factor ((MUL | DIV | MOD) algebraic_factor)*
+algebraic_factor     : algebraic_base (EXP algebraic_base)*
+algebraic_base : NUMBER | IDENT | NUMBER IDENT | "(" algebraic_expression ")"
+
+numerical_expression : numerical_term ((ADD | SUB) numerical_term)*
+numerical_term      : numerical_factor ((MUL | DIV | MOD) numerical_factor)*
+numerical_factor     : numerical_base (EXP numerical_base)*
+numerical_base : NUMBER | "(" numerical_expression ")"
+
+
+MUL: "*"
+DIV: "/"
+ADD: "+"
+EXP: "^"
+SUB: "-"
+MOD: "mod"
+
+
+%import common.ESCAPED_STRING   -> STRING
+%import common.CNAME   -> IDENT
+%import common.SIGNED_NUMBER    -> NUMBER
+%import common.WS
+%import common.NEWLINE
+
+
+%ignore WS
+%ignore NEWLINE
+
