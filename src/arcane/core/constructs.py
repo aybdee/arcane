@@ -1,29 +1,40 @@
 from lark import ParseTree
 from dataclasses import dataclass
-from typing import List, Any, Union,Tuple
-from sympy import sympify
+from typing import Dict, List, Any, Union,Tuple
+
+
 from enum import Enum
     
 
 class Transform():
     pass
-
     
 class Animatable():
     pass
 
-@dataclass
+
+class MathFunction(Animatable):
+    pass
+
+@dataclass(frozen=True, eq=True)
 class Identifier(Animatable):
     value: str = ""
 
 @dataclass
-class MathFunction(Animatable):
+class RegularMathFunction(MathFunction):
     variables: List[Identifier]
     expression: Any
+    pass
 
+@dataclass
+class ParametricMathFunction(MathFunction):
+    variables: List[Identifier]
+    expressions: Any
+    pass
 
 class ArcaneType(Enum):
     MATHFUNCTION = "MATH"
+    NUMBER = "NUMBER"
 
 @dataclass
 class SweepTransform(Transform):
@@ -36,10 +47,10 @@ class MultiSweepTransform(Transform):
 
 
 @dataclass 
-class Definition(Animatable):
+class Definition():
     type: ArcaneType
     name: Identifier
-    value: MathFunction #replace this with a union more types come along
+    value: MathFunction | float
     transform: Transform | None
 
 

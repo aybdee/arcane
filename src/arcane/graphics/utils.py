@@ -1,4 +1,12 @@
 from manim import *
+import random
+
+def get_random_color():
+    colors = [GREEN, YELLOW, WHITE, RED, BLUE, ORANGE, PURPLE, TEAL]
+    return random.choice(colors)
+    
+
+
 
 
 def clip_plot(csystem, plotfun, x_range=[-5,5,.01], **kwargs):
@@ -16,4 +24,4 @@ def clip_plot(csystem, plotfun, x_range=[-5,5,.01], **kwargs):
     return grp
 
 
-CoordinateSystem.clip_plot = clip_plot
+CoordinateSystem.clip_plot = clip_plot  # type: ignore

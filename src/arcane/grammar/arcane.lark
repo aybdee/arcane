@@ -1,30 +1,38 @@
 start : program
 program : statement* 
 statement : definition | animate_declaration NEWLINE
-definition : "Define" IDENT "as" expression math_transform
+definition : "Define" IDENT "as" (expression math_transform) 
 expression : math_function | algebraic_expression
 
 
 
-animate_declaration: "@" (definition | IDENT | (IDENT | math_function) math_transform)
+animate_declaration: "@" (IDENT | (IDENT | math_function) math_transform)
 
-sweep: "from" NUMBER "to" NUMBER
+sweep: "from" numerical_expression "to" numerical_expression
 multi_sweep: "with" IDENT (sweep ("," IDENT sweep)* | assign ("," assign)*)*
 assign: IDENT "="  numerical_expression
 math_transform: [sweep | multi_sweep]
 
 
 
-math_function: "f" "("(IDENT) ("," IDENT)*")" "=" algebraic_expression
+math_function: regular_math_function | parametric_math_function 
+regular_math_function: "f" "("(IDENT) ("," IDENT)*")" "=" algebraic_expression
+parametric_math_function: "parametric" "("(IDENT) ("," IDENT)*")" "=" "(" algebraic_expression ("," algebraic_expression)* ")"
+trigonometric_function: (SIN | COS | TAN) "(" algebraic_expression ")"
+
+
 algebraic_expression : algebraic_term ((ADD | SUB) algebraic_term)*
 algebraic_term      : algebraic_factor ((MUL | DIV | MOD) algebraic_factor)*
 algebraic_factor     : algebraic_base (EXP algebraic_base)*
-algebraic_base : NUMBER | IDENT | NUMBER IDENT | "(" algebraic_expression ")"
+algebraic_base : NUMBER | IDENT | NUMBER IDENT | "(" algebraic_expression ")" | trigonometric_function | constant
+
 
 numerical_expression : numerical_term ((ADD | SUB) numerical_term)*
 numerical_term      : numerical_factor ((MUL | DIV | MOD) numerical_factor)*
 numerical_factor     : numerical_base (EXP numerical_base)*
-numerical_base : NUMBER | "(" numerical_expression ")"
+numerical_base : NUMBER | "(" numerical_expression ")" | constant
+
+constant: PI | E
 
 
 MUL: "*"
@@ -33,6 +41,11 @@ ADD: "+"
 EXP: "^"
 SUB: "-"
 MOD: "mod"
+SIN: "sin"
+COS: "cos"
+TAN: "tan"
+PI: "PI"
+E: "e"
 
 
 %import common.ESCAPED_STRING   -> STRING
@@ -44,4 +57,3 @@ MOD: "mod"
 
 %ignore WS
 %ignore NEWLINE
-

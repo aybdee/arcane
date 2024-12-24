@@ -1,7 +1,10 @@
 from lark import Transformer
+from manim.constants import PI
 from sympy import sympify
+from sympy.core.numbers import E, Float
 
-from arcane.core.constructs import Animation, Definition, Identifier, InstanceAnimation, MathFunction, ArcaneType, MultiSweepTransform, Program, SweepTransform, Transform
+
+from arcane.core.constructs import Animation, Definition, Identifier, InstanceAnimation, MathFunction, ArcaneType, MultiSweepTransform, ParametricMathFunction, Program, RegularMathFunction, SweepTransform, Transform
 
 class ArcaneTransfomer(Transformer):
     def program(self,items):
@@ -24,6 +27,12 @@ class ArcaneTransfomer(Transformer):
 
             elif isinstance(item,Transform):
                 transform = item
+
+            elif isinstance(item,Float):
+                value = float(item)
+                arctype = ArcaneType.NUMBER
+            else:
+                pass
                 
         assert name is not None
         assert value is not None
@@ -38,16 +47,26 @@ class ArcaneTransfomer(Transformer):
             return Animation(value=InstanceAnimation(instance=items[0],transform=items[1]))
             
     
-    def math_function(self,items):
+    def regular_math_function(self,items):
         variables = []
         expression = ""
         for item in items:
             if isinstance(item,Identifier):
                 variables.append(item)
             else:
-                expression = item
-        return MathFunction(variables, expression)
+                expression = sympify(item)
+        return RegularMathFunction(variables, expression)
 
+
+    def parametric_math_function(self,items):
+        variables = []
+        expressions = []
+        for item in items:
+            if isinstance(item,Identifier):
+                variables.append(item)
+            else:
+                expressions.append(sympify(item))
+        return ParametricMathFunction(variables,expressions)
 
     def sweep(self,items):
         return SweepTransform(items[0],items[1])
@@ -63,7 +82,7 @@ class ArcaneTransfomer(Transformer):
         return MultiSweepTransform(transforms)
 
     def numerical_expression(self,items):
-        return sympify(" ".join(items))
+        return float(sympify(" ".join(items)))
     
     def numerical_factor(self,items):
         return " ".join(items)
@@ -81,7 +100,7 @@ class ArcaneTransfomer(Transformer):
         return repr_string
 
     def algebraic_expression(self,items):
-        return sympify(" ".join(items))
+        return f'({" ".join(items)})'
     
     def algebraic_factor(self,items):
         return " ".join(items)
@@ -97,6 +116,17 @@ class ArcaneTransfomer(Transformer):
             else:
                 repr_string  += f"{item}"
         return repr_string
+
+    def trigonometric_function(self,items):
+        return f"{items[0]}({items[1]})"
+
+
+    
+    def expression(self,items):
+        if isinstance(items[0],str): #check if it's just a literal value(not function)
+            return sympify(items[0])
+        else:
+            return items[0]
 
     
     def NUMBER(self, n):
@@ -122,10 +152,23 @@ class ArcaneTransfomer(Transformer):
 
     def EXP(self,_):
         return "^"
+    
+    def SIN(self,_):
+        return "sin"
+    
+    def COS(self,_):
+        return "cos"
+
+    def TAN(self,_):
+        return "tan"
+
+    def PI(self,_):
+        return PI
+
+    def E(self,_):
+        return E
 
     #process non terminal nodes
-    def expression(self,items):
-        return items[0]
 
     def statement(self,items):
         return items[0]
@@ -135,3 +178,10 @@ class ArcaneTransfomer(Transformer):
     
     def math_transform(self,items):
         return items[0]
+
+    def math_function(self,items):
+        return items[0]
+
+    def constant(self,items):
+        return items[0]
+
