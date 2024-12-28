@@ -33,3 +33,12 @@ Define damped_oscillation as f(x) = e ^ (-0.1 * x) * sin(x)
 
 Define piecewise_parabola as f(x) = (x ^ 2) + 3 * x + 2
 @piecewise_parabola from -3 to 3
+
+Define bell_curve as f(x) = e ^ (-x ^ 2)
+@bell_curve from -2 to 2
+
+Define log_spiral as parametric (t) = (e ^ t * cos(t), e ^ t * sin(t))
+@log_spiral from 0 to 2 * PI
+
+Define heart as parametric (t) = (16 * sin(t) ^ 3, 13 * cos(t) - 5 * cos(2 * t) - 2 * cos(3 * t) - cos(4 * t))
+@heart from 0 to 2 * PI

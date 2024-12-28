@@ -9,9 +9,8 @@ expression : math_function | algebraic_expression
 animate_declaration: "@" (IDENT | (IDENT | math_function) math_transform)
 
 sweep: "from" numerical_expression "to" numerical_expression
-multi_sweep: "with" IDENT (sweep ("," IDENT sweep)* | assign ("," assign)*)*
 assign: IDENT "="  numerical_expression
-math_transform: [sweep | multi_sweep]
+math_transform: [sweep]
 
 
 
@@ -24,7 +23,7 @@ trigonometric_function: (SIN | COS | TAN) "(" algebraic_expression ")"
 algebraic_expression : algebraic_term ((ADD | SUB) algebraic_term)*
 algebraic_term      : algebraic_factor ((MUL | DIV | MOD) algebraic_factor)*
 algebraic_factor     : algebraic_base (EXP algebraic_base)*
-algebraic_base : NUMBER | IDENT | NUMBER IDENT | "(" algebraic_expression ")" | trigonometric_function | constant
+algebraic_base : [SUB] (NUMBER | IDENT | NUMBER IDENT | "(" algebraic_expression ")" | trigonometric_function | constant)
 
 
 numerical_expression : numerical_term ((ADD | SUB) numerical_term)*
