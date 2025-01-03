@@ -68,5 +68,11 @@ class Animation:
 
 
 @dataclass
+class AxisBlock:
+    name: Identifier
+    animations: List[Animation]
+
+
+@dataclass
 class Program:
     statements: List[Definition | Animation]

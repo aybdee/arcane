@@ -6,7 +6,7 @@ from arcane.core.transfomer import ArcaneTransfomer
 from pprint import pprint
 
 
-with open("../test/define.arc","r") as f:
+with open("../test/define.arc", "r") as f:
     tree = parse(f.read())
     program = ArcaneTransfomer().transform(tree)
     interpreter = ArcaneInterpreter(program)

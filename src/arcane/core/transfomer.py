@@ -16,6 +16,7 @@ from arcane.core.constructs import (
     RegularMathFunction,
     SweepTransform,
     Transform,
+    AxisBlock,
 )
 
 
@@ -69,6 +70,18 @@ class ArcaneTransfomer(Transformer):
             return Animation(
                 value=InstanceAnimation(instance=items[0], transform=items[1])
             )
+
+    @filter_none
+    def axis_declaration(self, items):
+        identifier = None
+        animations = []
+        for item in items:
+            if isinstance(item, Identifier):
+                identifier = item
+            else:
+                animations.append(item)
+        assert identifier is not None
+        return AxisBlock(name=identifier, animations=animations)
 
     def regular_math_function(self, items):
         variables = []
@@ -196,3 +209,6 @@ class ArcaneTransfomer(Transformer):
 
     def constant(self, items):
         return items[0]
+
+    def NEWLINE(self, _):
+        pass

@@ -1,30 +1,21 @@
-# from manim import *
-#
-# class ParametricCurveExample(Scene):
-#     def construct(self):
-#         ax = Axes()
-#         cardioid = ax.plot_parametric_curve(
-#             lambda t: np.array(
-#                 [
-#                     np.exp(1) * np.cos(t) * (1 - np.cos(t)),
-#                     np.exp(1) * np.sin(t) * (1 - np.cos(t)),
-#                     0,
-#                 ]
-#             ),
-#             t_range=[0, 2 * PI],
-#             color="#0FF1CE",
-#         )
-#         self.add(ax, cardioid)
-import numpy as np
-from pprint import pprint
-e = 2.71828
-def parametric_values(t):
-    x = e * np.cos(t) * (1 - np.cos(t))
-    y = e * np.sin(t) * (1 - np.cos(t))
-    z = 0  # z is always 0 in this case
-    return x, y, z
+from manim import *
 
-# Evaluate the values for t from 1 to 10
-t_values = np.linspace(1, 10, 10)  # 10 points from t=1 to t=10
-values = [parametric_values(t) for t in t_values]
-pprint(values)
+
+class SideBySideGraphs(Scene):
+    def construct(self):
+        # Axes and graphs for the first plot
+        axes1 = Axes(x_range=[-3, 3], y_range=[-2, 2], tips=False)
+
+        graph1 = axes1.plot(lambda x: x**2, color=BLUE, x_range=[-3, 3])
+
+        # Axes and graphs for the second plot
+        axes2 = Axes(x_range=[-3, 3], y_range=[-2, 2], tips=False).next_to(axes1)
+
+        graph2 = axes2.plot(lambda x: 0.5 * x**3, color=RED, x_range=[-3, 3])
+
+        # vgroup = VGroup(axes1, axes2, graph1, graph2).scale(0.5).move_to(ORIGIN)
+
+        self.play(Create(axes1))
+        self.play(Create(graph1))
+        self.play(Create(axes2))
+        self.play(Create(graph2))

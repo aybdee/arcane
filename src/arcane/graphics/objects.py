@@ -6,7 +6,7 @@ from manim import *
 
 class Frame(ABC):
     @abstractmethod
-    def render(self) -> AnimationGroup: ...
+    def render(self) -> Tuple[VGroup, List]: ...
 
 
 @dataclass
@@ -21,6 +21,7 @@ class Axis(Frame):
         self.items: List[Plot] = []
         self.x_range = (0, 0)
         self.y_range = (0, 0)
+        self.num_ticks = 5
 
     def add(self, item: Plot):
         if len(self.items) == 0:
@@ -39,27 +40,29 @@ class Axis(Frame):
         self.items.append(item)
 
     def render(self):
+        x_step = (self.x_range[1] - self.x_range[0]) / self.num_ticks
+        y_step = (self.y_range[1] - self.y_range[0]) / self.num_ticks
         axes = Axes(
             x_range=[
                 self.x_range[0] * 2,
                 self.x_range[1] * 2,
-                1,
+                x_step,
             ],
             y_range=[
                 self.y_range[0] * 2,
                 self.x_range[1] * 2,
-                1,
+                y_step,
             ],
             axis_config={"color": GREEN},
             tips=False,
+            x_axis_config={"unit_size": 0.5},
+            y_axis_config={"unit_size": 0.5},
         )
 
-        axes.shift(-axes.coords_to_point(0, 0))  # Move (0, 0) to ORIGIN
+        plots = [item.render(axes) for item in self.items]
+        plots_group = VGroup(axes, *plots)  # Group axes and plots
 
-        return AnimationGroup(
-            *[
-                Create(axes),
-                *[item.render(axes) for item in self.items],
-            ],
-            lag_ratio=0.2,
-        )
+        return (
+            plots_group,
+            [Create(axes), *[Create(plot) for plot in plots]],
+        )  # Return the grouped animation

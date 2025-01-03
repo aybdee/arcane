@@ -48,7 +48,7 @@ def render_parametric_math_function(
                     stroke_width=3,
                 )
         assert graph is not None
-        return AnimationGroup(Create(graph))
+        return graph
 
     return Plot(
         render, x_range=(x_range[0], x_range[1]), y_range=(y_range[0], y_range[1])
@@ -76,11 +76,11 @@ def render_regular_math_function(
         graph = axes.clip_plot(
             math_function,
             x_range=[x_start, x_end, 0.1],
-            color=get_random_color(),  # Set a pleasing color for the graph
-            stroke_width=3,  # Make the graph line slightly bolder
+            color=get_random_color(),
+            stroke_width=3,
         )
 
         # Create animations
-        return AnimationGroup(Create(graph))
+        return graph
 
     return Plot(render, x_range=(x_start, x_end), y_range=(y_range[0], y_range[1]))

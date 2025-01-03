@@ -1,6 +1,6 @@
 start : program
 program : statement* 
-statement : definition | animate_declaration NEWLINE
+statement : definition | animate_declaration | axis_declaration NEWLINE
 definition : "Define" IDENT "as" (expression math_transform) 
 expression : math_function | algebraic_expression
 
@@ -11,6 +11,9 @@ animate_declaration: "@" (IDENT | (IDENT | math_function) math_transform)
 sweep: "from" numerical_expression "to" numerical_expression
 assign: IDENT "="  numerical_expression
 math_transform: [sweep]
+
+
+axis_declaration: "on" "axis" IDENT "{" (animate_declaration NEWLINE)* "}"
 
 
 

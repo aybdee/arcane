@@ -29,4 +29,11 @@ def clip_plot(csystem, plotfun, x_range=[-5, 5, 0.01], **kwargs):
     return grp
 
 
+def layout_horizontal(objects: List[Mobject]):
+    current_object = objects[0]
+    for object in objects[1:]:
+        object.next_to(current_object)
+        current_object = object
+
+
 CoordinateSystem.clip_plot = clip_plot  # type: ignore
