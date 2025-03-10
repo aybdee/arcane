@@ -102,7 +102,7 @@ class ArcaneInterpreter:
     def handle_axis_block(self, axis_block: AxisBlock):
         processed_animations = []
         for animation in axis_block.animations:
-            processed_animation = self.handle_animation(animation)
+            processed_animation = self.handle_animation(animation)  # type: ignore
             processed_animations.append(processed_animation.data)
 
         # self.blocks.append((axis_block, processed_animations))
@@ -115,7 +115,7 @@ class ArcaneInterpreter:
             self.store.add(
                 definition.name.value,
                 InstanceAnimation(
-                    instance=definition.value, transform=definition.transform
+                    instance=definition.value, transforms=[definition.transform]
                 ),
             )
         else:
@@ -144,7 +144,7 @@ class ArcaneInterpreter:
                     )
                     return InterpreterMessage.SUCCESS.with_data(
                         render_regular_math_function(
-                            animation.value.instance, animation.value.transform
+                            animation.value.instance, animation.value.transforms
                         )
                     )
 
@@ -157,7 +157,7 @@ class ArcaneInterpreter:
                     )
                     return InterpreterMessage.SUCCESS.with_data(
                         render_parametric_math_function(
-                            animation.value.instance, animation.value.transform
+                            animation.value.instance, animation.value.transforms
                         )
                     )
             else:
@@ -165,11 +165,11 @@ class ArcaneInterpreter:
                 return self.handle_animation(
                     Animation(
                         value=InstanceAnimation(
-                            instance=value, transform=animation.value.transform
+                            instance=value, transforms=animation.value.transforms
                         )
                     )
                 )
-        if isinstance(animation.value, Identifier):
+        elif isinstance(animation.value, Identifier):
             return self.animate_variable(animation.value.value)
         return InterpreterMessage.SUCCESS
 

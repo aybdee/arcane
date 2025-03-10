@@ -1,12 +1,14 @@
 from dataclasses import dataclass
 from typing import Callable, Tuple
 from abc import ABC, abstractmethod
+from arcane.graphics.animation import AnimationItem, AnimationPhase
 from manim import *
+import numpy as np
 
 
 class Frame(ABC):
     @abstractmethod
-    def render(self) -> Tuple[VGroup, List]: ...
+    def render(self, scene) -> Tuple[VGroup, List[AnimationItem]]: ...
 
 
 @dataclass
@@ -14,6 +16,13 @@ class Plot:
     render: Callable
     x_range: Tuple[float, float]
     y_range: Tuple[float, float]
+
+
+@dataclass
+class ArcaneDot:
+    value: Dot
+    tracker: ValueTracker
+    end: float
 
 
 class Axis(Frame):
@@ -39,7 +48,7 @@ class Axis(Frame):
             )
         self.items.append(item)
 
-    def render(self):
+    def render(self, scene):
         x_step = (self.x_range[1] - self.x_range[0]) / self.num_ticks
         y_step = (self.y_range[1] - self.y_range[0]) / self.num_ticks
         axes = Axes(
@@ -50,19 +59,47 @@ class Axis(Frame):
             ],
             y_range=[
                 self.y_range[0] * 2,
-                self.x_range[1] * 2,
+                self.y_range[1] * 2,
                 y_step,
             ],
-            axis_config={"color": GREEN},
+            axis_config={"color": WHITE},
             tips=False,
             x_axis_config={"unit_size": 0.5},
             y_axis_config={"unit_size": 0.5},
         )
+        plots, auxillary = map(list, zip(*[item.render(axes) for item in self.items]))
+        animations = []
 
-        plots = [item.render(axes) for item in self.items]
         plots_group = VGroup(axes, *plots)  # Group axes and plots
 
-        return (
-            plots_group,
-            [Create(axes), *[Create(plot) for plot in plots]],
-        )  # Return the grouped animation
+        animations.append(
+            AnimationItem(animation=axes, phase=AnimationPhase.SETUP, animate=False)
+        )
+
+        for plot in plots:
+            animations.append(
+                AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
+            )
+
+        for aux_group in auxillary:
+            for construct in aux_group:
+                if isinstance(construct, ArcaneDot):
+                    animations.append(
+                        AnimationItem(
+                            animation=construct.value,
+                            phase=AnimationPhase.SECONDARY,
+                            animate=False,
+                        )
+                    )
+
+                    animations.append(
+                        AnimationItem(
+                            animation=construct.tracker.animate.set_value(
+                                construct.end
+                            ),
+                            phase=AnimationPhase.SECONDARY,
+                            config={"rate_func": linear},
+                        )
+                    )
+
+        return plots_group, animations

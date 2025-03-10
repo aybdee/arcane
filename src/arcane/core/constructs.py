@@ -1,40 +1,37 @@
 from lark import ParseTree
 from dataclasses import dataclass
-from typing import Dict, List, Any, Union, Tuple
+from typing import Dict, List, Any
 
 
 from enum import Enum
 
 
-class Transform:
-    pass
+class SweepDotTransform: ...
 
 
-class Animatable:
-    pass
-
-
-class MathFunction(Animatable):
-    pass
+class SweepRectangleDotTransform: ...
 
 
 @dataclass(frozen=True, eq=True)
-class Identifier(Animatable):
+class Identifier:
     value: str = ""
 
 
 @dataclass
-class RegularMathFunction(MathFunction):
+class RegularMathFunction:
     variables: List[Identifier]
     expression: Any
     pass
 
 
 @dataclass
-class ParametricMathFunction(MathFunction):
+class ParametricMathFunction:
     variables: List[Identifier]
     expressions: Any
     pass
+
+
+MathFunction = RegularMathFunction | ParametricMathFunction
 
 
 class ArcaneType(Enum):
@@ -43,9 +40,23 @@ class ArcaneType(Enum):
 
 
 @dataclass
-class SweepTransform(Transform):
+class SweepTransform:
     sweep_from: float
     sweep_to: float
+
+
+MathTransform = SweepTransform
+Transform = MathTransform | SweepDotTransform
+
+
+@dataclass
+class InstanceAnimation:
+    instance: Identifier | MathFunction
+    transforms: List[Transform]
+
+
+# union type definitions
+Animatable = InstanceAnimation | MathFunction | Identifier
 
 
 @dataclass
@@ -53,13 +64,7 @@ class Definition:
     type: ArcaneType
     name: Identifier
     value: MathFunction | float
-    transform: Transform | None
-
-
-@dataclass
-class InstanceAnimation(Animatable):
-    instance: Identifier | MathFunction
-    transform: Transform
+    transform: MathTransform | None
 
 
 @dataclass
@@ -70,7 +75,7 @@ class Animation:
 @dataclass
 class AxisBlock:
     name: Identifier
-    animations: List[Animation]
+    animations: List[InstanceAnimation]
 
 
 @dataclass

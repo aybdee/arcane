@@ -6,7 +6,10 @@ expression : math_function | algebraic_expression
 
 
 
-animate_declaration: "@" (IDENT | (IDENT | math_function) math_transform)
+animate_declaration: "@" (IDENT | (IDENT | math_function) math_transform) ["and" sweep_dot | sweep_rectangle_dot]
+
+sweep_dot: "sweep dot across"
+sweep_rectangle_dot: "sweep rectangle dot across"
 
 sweep: "from" numerical_expression "to" numerical_expression
 assign: IDENT "="  numerical_expression

@@ -19,6 +19,8 @@ decorator==5.1.1
     # via manim
 glcontext==3.0.0
     # via moderngl
+iniconfig==2.0.0
+    # via pytest
 isosurfaces==0.1.2
     # via manim
 lark==1.2.2
@@ -51,9 +53,13 @@ numpy==1.26.4
     # via moderngl-window
     # via pyrr
     # via scipy
+packaging==24.2
+    # via pytest
 pillow==11.0.0
     # via manim
     # via moderngl-window
+pluggy==1.5.0
+    # via pytest
 pycairo==1.27.0
     # via manim
 pydub==0.25.1
@@ -65,6 +71,7 @@ pygments==2.18.0
     # via rich
 pyrr==0.10.3
     # via moderngl-window
+pytest==8.3.5
 rich==13.9.4
     # via manim
 scipy==1.14.1

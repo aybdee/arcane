@@ -11,9 +11,12 @@ from arcane.core.constructs import (
     InstanceAnimation,
     MathFunction,
     ArcaneType,
+    MathTransform,
     ParametricMathFunction,
     Program,
     RegularMathFunction,
+    SweepDotTransform,
+    SweepRectangleDotTransform,
     SweepTransform,
     Transform,
     AxisBlock,
@@ -48,7 +51,7 @@ class ArcaneTransfomer(Transformer):
                 arctype = ArcaneType.MATHFUNCTION
                 value = item
 
-            elif isinstance(item, Transform):
+            elif isinstance(item, MathTransform):
                 transform = item
 
             elif isinstance(item, Float):
@@ -68,8 +71,14 @@ class ArcaneTransfomer(Transformer):
             return Animation(value=items[0])
         else:
             return Animation(
-                value=InstanceAnimation(instance=items[0], transform=items[1])
+                value=InstanceAnimation(instance=items[0], transforms=items[1:])
             )
+
+    def sweep_dot(self, _):
+        return SweepDotTransform()
+
+    def sweep_rectangle_dot(self, _):
+        return SweepRectangleDotTransform()
 
     @filter_none
     def axis_declaration(self, items):
