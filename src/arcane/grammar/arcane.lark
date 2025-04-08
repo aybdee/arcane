@@ -6,10 +6,9 @@ expression : math_function | algebraic_expression
 
 
 
-animate_declaration: "@" (IDENT | (IDENT | math_function) math_transform) ["and" sweep_dot | sweep_rectangle_dot]
+animate_declaration: "@" (IDENT | (IDENT | math_function) math_transform) ["and" sweep_dot]
 
 sweep_dot: "sweep dot across"
-sweep_rectangle_dot: "sweep rectangle dot across"
 
 sweep: "from" numerical_expression "to" numerical_expression
 assign: IDENT "="  numerical_expression
@@ -20,8 +19,9 @@ axis_declaration: "on" "axis" IDENT "{" (animate_declaration NEWLINE)* "}"
 
 
 
-math_function: regular_math_function | parametric_math_function 
+math_function: regular_math_function | parametric_math_function | polar_math_function
 regular_math_function: "f" "("(IDENT) ("," IDENT)*")" "=" algebraic_expression
+polar_math_function: "polar" "(" (IDENT) ")" "=" algebraic_expression
 parametric_math_function: "parametric" "("(IDENT) ("," IDENT)*")" "=" "(" algebraic_expression ("," algebraic_expression)* ")"
 trigonometric_function: (SIN | COS | TAN) "(" algebraic_expression ")"
 

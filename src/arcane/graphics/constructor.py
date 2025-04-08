@@ -3,6 +3,7 @@ from manim import *
 from arcane.core.constructs import (
     MathFunction,
     ParametricMathFunction,
+    PolarMathFunction,
     RegularMathFunction,
     SweepDotTransform,
     SweepTransform,
@@ -69,7 +70,61 @@ def render_parametric_math_function(
         return (graph, auxillary)
 
     return Plot(
-        render, x_range=(x_range[0], x_range[1]), y_range=(y_range[0], y_range[1])
+        render,
+        "Axis",
+        x_range=(x_range[0], x_range[1]),
+        y_range=(y_range[0], y_range[1]),
+    )
+
+
+def render_polar_math_function(
+    function: PolarMathFunction, transforms: List[ArcaneTransform]
+) -> Plot:
+    x_start = 0
+    x_end = 0
+
+    primary_transform = transforms[0]
+    auxillary_transforms = transforms[1:]
+
+    if isinstance(primary_transform, SweepTransform):
+        x_start = avoid_zero(primary_transform.sweep_from)
+        x_end = avoid_zero(primary_transform.sweep_to)
+
+    else:
+        raise (Exception("unhandled transformation encountered"))
+
+    math_function = lambda x: function.expression.subs(function.variables[0].value, x)
+    y_range = compute_function_range(math_function, [x_start, x_end])
+
+    def render(plane: PolarPlane):
+        graph = plane.plot_polar_graph(
+            math_function, [x_start, x_end], color=get_random_color()
+        )
+
+        auxillary = []
+
+        for transform in auxillary_transforms:
+            if isinstance(transform, SweepDotTransform):
+                t = ValueTracker(int(x_start))
+                dot = Dot(
+                    point=plane.coords_to_point(
+                        t.get_value(), math_function(t.get_value())
+                    ),
+                    color=WHITE,
+                )
+
+                dot.add_updater(
+                    lambda x: x.move_to(
+                        plane.c2p(t.get_value(), math_function(t.get_value()))
+                    )
+                )
+                auxillary.append(ArcaneDot(value=dot, tracker=t, end=x_end))
+
+        # Create animations
+        return (graph, auxillary)
+
+    return Plot(
+        render, "PolarPlane", x_range=(x_start, x_end), y_range=(y_range[0], y_range[1])
     )
 
 
@@ -123,4 +178,6 @@ def render_regular_math_function(
         # Create animations
         return (graph, auxillary)
 
-    return Plot(render, x_range=(x_start, x_end), y_range=(y_range[0], y_range[1]))
+    return Plot(
+        render, "Axis", x_range=(x_start, x_end), y_range=(y_range[0], y_range[1])
+    )

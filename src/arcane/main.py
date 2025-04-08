@@ -4,7 +4,6 @@ from arcane.core.constructs import Program
 from arcane.core.interpreter import ArcaneInterpreter, InterpreterMessage
 from arcane.core.parser import parse
 from arcane.core.transfomer import ArcaneTransfomer
-from pprint import pprint
 
 if len(argv) < 2:
     print("error: arc file not supplied")

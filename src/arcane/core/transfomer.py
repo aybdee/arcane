@@ -13,12 +13,11 @@ from arcane.core.constructs import (
     ArcaneType,
     MathTransform,
     ParametricMathFunction,
+    PolarMathFunction,
     Program,
     RegularMathFunction,
     SweepDotTransform,
-    SweepRectangleDotTransform,
     SweepTransform,
-    Transform,
     AxisBlock,
 )
 
@@ -77,9 +76,6 @@ class ArcaneTransfomer(Transformer):
     def sweep_dot(self, _):
         return SweepDotTransform()
 
-    def sweep_rectangle_dot(self, _):
-        return SweepRectangleDotTransform()
-
     @filter_none
     def axis_declaration(self, items):
         identifier = None
@@ -111,6 +107,16 @@ class ArcaneTransfomer(Transformer):
             else:
                 expressions.append(sympify(item))
         return ParametricMathFunction(variables, expressions)
+
+    def polar_math_function(self, items):
+        variables = []
+        expression = ""
+        for item in items:
+            if isinstance(item, Identifier):
+                variables.append(item)
+            else:
+                expression = sympify(item)
+        return PolarMathFunction(variables, expression)
 
     def sweep(self, items):
         return SweepTransform(items[0], items[1])

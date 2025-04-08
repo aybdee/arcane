@@ -1,117 +1,82 @@
-from typing import Any, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
+from enum import Enum
 from pprint import pprint
+
 from arcane.core.constructs import (
     Animation,
     AxisBlock,
     Definition,
-    Identifier,
-    InstanceAnimation,
-    MathFunction,
-    ParametricMathFunction,
     Program,
-    RegularMathFunction,
+    MathFunction,
+    InstanceAnimation,
 )
-from enum import Enum
-
-from arcane.graphics.constructor import (
-    render_parametric_math_function,
-    render_regular_math_function,
-)
-from arcane.graphics.objects import Axis, Plot
-
+from arcane.graphics.objects import PlotContainer, Plot
 from arcane.graphics.scene import construct_scene
 
-
-class InterpreterErrorCode(Enum):
-    NO_STATEMENTS_AVAILABLE = "No statements left to evaluate"
-    UNDEFINED_VARIABLE = "Undefined variable: {variable_name}"
-    UNKOWN = "Program crashed unexpectedly"
-
-
-class InterpreterError(Exception):
-    def __init__(self, error_code: InterpreterErrorCode, **kwargs):
-        self.error_code = error_code
-        self.message = error_code.value.format(**kwargs)
-        super().__init__(self.message)
-
-    def __str__(self):
-        return self.message
-
-
-class InterpreterMessage(Enum):
-    SUCCESS = ("statement evaulated", None)
-
-    def __new__(cls, label, data):
-        obj = object.__new__(cls)
-        obj._value_ = label
-        obj.data = data
-        return obj
-
-    def with_data(self, data):
-        self.data = data
-        return self
-
-
-class Store:
-    def __init__(self):
-        self.store = {}
-
-    def add(self, key, value):
-        self.store.update({key: value})
-
-    def get(self, key):
-        return self.store.get(key)
-
-    def get_or_throw(self, key):
-        value = self.get(key)
-        if value:
-            return value
-        else:
-            raise InterpreterError(
-                InterpreterErrorCode.UNDEFINED_VARIABLE, variable_name=key
-            )
-
-    def __str__(self):
-        return str(list(self.store.keys()))
+from arcane.core.interpreter_types import (
+    InterpreterMessage,
+    InterpreterMessageType,
+    InterpreterError,
+    InterpreterErrorCode,
+)
+from arcane.core.store import Store
+from arcane.core.animation_processor import AnimationProcessor
 
 
 class ArcaneInterpreter:
+    """
+    Interpreter for Arcane language programs
+
+    This interpreter executes statements in an Arcane program one by one,
+    maintaining a store of variables and processing animations and axis blocks.
+    """
+
     def __init__(self, program: Program):
         self.program = program
         self.store = Store()
-        self.current_axis = 0
+        self.animation_processor = AnimationProcessor(self.store)
         self.instruction_pointer = 0
 
+        # Results tracking
+        self.animation_blocks: List[PlotContainer] = []
+        self.global_container: Optional[Dict] = None
+
     def execute_next(self) -> InterpreterMessage:
-        if len(self.program.statements) - 1 < self.instruction_pointer:
+        """Execute the next statement in the program"""
+        # Check if there are any statements left
+        if self.instruction_pointer >= len(self.program.statements):
             raise InterpreterError(InterpreterErrorCode.NO_STATEMENTS_AVAILABLE)
 
+        # Get the current statement and increment the instruction pointer
         current_statement = self.program.statements[self.instruction_pointer]
         self.instruction_pointer += 1
-        if isinstance(current_statement, Definition):
-            return self.handle_definition(current_statement)
 
-        elif isinstance(current_statement, Animation):
-            return self.handle_animation(current_statement)
+        try:
+            # Handle different statement types
+            if isinstance(current_statement, Definition):
+                return self._handle_definition(current_statement)
+            elif isinstance(current_statement, Animation):
+                return self._handle_animation(current_statement)
+            elif isinstance(current_statement, AxisBlock):
+                return self._handle_axis_block(current_statement)
+            else:
+                # Handle unsupported statement type
+                raise InterpreterError(
+                    InterpreterErrorCode.UNSUPPORTED_STATEMENT,
+                    statement_type=type(current_statement).__name__,
+                )
+        except InterpreterError:
+            # Re-raise interpreter errors
+            raise
+        except Exception as e:
+            # Wrap other exceptions in an interpreter error
+            raise e
+            # raise InterpreterError(InterpreterErrorCode.UNKNOWN, details=str(e))
 
-        elif isinstance(current_statement, AxisBlock):
-            return self.handle_axis_block(current_statement)
-
-        raise InterpreterError(InterpreterErrorCode(InterpreterErrorCode.UNKOWN))
-
-    def handle_axis_block(self, axis_block: AxisBlock):
-        processed_animations = []
-        for animation in axis_block.animations:
-            processed_animation = self.handle_animation(animation)  # type: ignore
-            processed_animations.append(processed_animation.data)
-
-        # self.blocks.append((axis_block, processed_animations))
-        # return InterpreterMessage.SUCCESS
-
-        return InterpreterMessage.SUCCESS.with_data((axis_block, processed_animations))
-
-    def handle_definition(self, definition: Definition):
+    def _handle_definition(self, definition: Definition) -> InterpreterMessage:
+        """Handle a definition statement"""
         if definition.transform and isinstance(definition.value, MathFunction):
+            # Store a function with its transform
             self.store.add(
                 definition.name.value,
                 InstanceAnimation(
@@ -119,89 +84,85 @@ class ArcaneInterpreter:
                 ),
             )
         else:
+            # Store a regular value
             self.store.add(definition.name.value, definition.value)
-        return InterpreterMessage.SUCCESS
 
-    def animate_variable(self, id: str):
-        return self.handle_animation(Animation(value=self.store.get_or_throw(id)))
+        return InterpreterMessage(InterpreterMessageType.SUCCESS)
 
-    def process_expression(self, expression: Any) -> Any:
-        # evalutes all the terms inside an expression that have stored identifiers
-        variables = list(expression.free_symbols)
-        evaluated_expr = expression
-        for variable in variables:
-            stored_value = self.store.get(str(variable))
-            if isinstance(stored_value, float):
-                evaluated_expr = evaluated_expr.subs({variable: stored_value})
-        return evaluated_expr
+    def _handle_animation(self, animation: Animation) -> InterpreterMessage:
+        """Handle an animation statement"""
+        # Delegate to the animation processor
+        return self.animation_processor.process_animation(animation)
 
-    def handle_animation(self, animation: Animation):
-        if isinstance(animation.value, InstanceAnimation):
-            if isinstance(animation.value.instance, MathFunction):
-                if isinstance(animation.value.instance, RegularMathFunction):
-                    animation.value.instance.expression = self.process_expression(
-                        animation.value.instance.expression
-                    )
-                    return InterpreterMessage.SUCCESS.with_data(
-                        render_regular_math_function(
-                            animation.value.instance, animation.value.transforms
-                        )
-                    )
+    def _handle_axis_block(self, axis_block: AxisBlock) -> InterpreterMessage:
+        """Handle an axis block statement"""
+        processed_animations = []
 
-                elif isinstance(animation.value.instance, ParametricMathFunction):
-                    animation.value.instance.expressions = list(
-                        map(
-                            self.process_expression,
-                            animation.value.instance.expressions,
-                        )
-                    )
-                    return InterpreterMessage.SUCCESS.with_data(
-                        render_parametric_math_function(
-                            animation.value.instance, animation.value.transforms
-                        )
-                    )
-            else:
-                value = self.store.get_or_throw(animation.value.instance.value)
-                return self.handle_animation(
-                    Animation(
-                        value=InstanceAnimation(
-                            instance=value, transforms=animation.value.transforms
-                        )
-                    )
-                )
-        elif isinstance(animation.value, Identifier):
-            return self.animate_variable(animation.value.value)
-        return InterpreterMessage.SUCCESS
+        # Process each animation in the axis block
+        for animation in axis_block.animations:
+            processed_animation = self._handle_animation(animation)  # type: ignore
+            if processed_animation.data:
+                if processed_animation.data.container_type != "Axis":
+                    InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
+                processed_animations.append(processed_animation.data)
 
-    def run(self):
+        # Return the axis block with its processed animations
+        return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
+            (axis_block, processed_animations)
+        )
+
+    def run(self) -> None:
+        """Run the entire program"""
         animation_blocks = []
-        global_axis = None
-        objects = []
-        for _ in range(len(self.program.statements)):
-            result = self.execute_next()
-            if isinstance(result, InterpreterMessage):
-                if isinstance(result.data, Plot):
-                    if not global_axis:
-                        global_axis = Axis()
+        global_container = {}
 
-                    global_axis.add(result.data)
-                elif isinstance(result.data, Tuple):
-                    axis = Axis()
-                    for animation in result.data[1]:
+        # Execute all statements in the program
+        for _ in range(len(self.program.statements)):
+            try:
+                result = self.execute_next()
+                # Handle the result
+                if isinstance(result.data, Plot):
+                    # Add plots to the global axis
+                    if result.data.container_type == "Axis":
+                        if global_container.get("axis") == None:
+                            global_container["axis"] = PlotContainer("Axis")
+                        global_container["axis"].add(result.data)
+
+                    elif result.data.container_type == "PolarPlane":
+                        if global_container.get("polar") == None:
+                            global_container["polar"] = PlotContainer("PolarPlane")
+                        global_container["polar"].add(result.data)
+
+                elif isinstance(result.data, Tuple) and len(result.data) == 2:
+                    # Create a new axis for an axis block
+                    axis_block, animations = result.data
+                    axis = PlotContainer("Axis")
+                    for animation in animations:
                         axis.add(animation)
                     animation_blocks.append(axis)
 
-            else:
-                raise Exception("an exception occured")
+            except InterpreterError as e:
+                print(f"Error: {e}")
+                # Optionally break execution or continue based on error severity
+                break
 
-        if global_axis:
-            animation_blocks.append(global_axis)
+        # Add the global containers to animation blocks if it exists
+        for key in global_container.keys():
+            animation_blocks.append(global_container[key])
 
-        arcane_animation = construct_scene(animation_blocks)()
-        arcane_animation.render()
+        # Render the final scene if there are any animation blocks
+        if animation_blocks:
+            arcane_animation = construct_scene(animation_blocks)()
+            arcane_animation.render()
+        else:
+            print("No animations to render")
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return a string representation of the interpreter state"""
         return f"""
-        instruction_pointer: {self.instruction_pointer}
-        variables: {str(self.store)}
+        Interpreter State:
+        - Instruction pointer: {self.instruction_pointer}
+        - Variables: {str(self.store)}
+        - Total statements: {len(self.program.statements)}
+        - Statements executed: {self.instruction_pointer}
         """

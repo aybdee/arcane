@@ -1,9 +1,12 @@
+from __future__ import annotations
 from dataclasses import dataclass
-from typing import Callable, Tuple
+from typing import Callable, Literal, Tuple
 from abc import ABC, abstractmethod
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from manim import *
 import numpy as np
+
+PlotContainerType = Literal["PolarPlane"] | Literal["Axis"]
 
 
 class Frame(ABC):
@@ -14,6 +17,7 @@ class Frame(ABC):
 @dataclass
 class Plot:
     render: Callable
+    container_type: PlotContainerType
     x_range: Tuple[float, float]
     y_range: Tuple[float, float]
 
@@ -25,8 +29,9 @@ class ArcaneDot:
     end: float
 
 
-class Axis(Frame):
-    def __init__(self):
+class PlotContainer(Frame):
+    def __init__(self, container_type: PlotContainerType):
+        self.container_type = container_type
         self.items: List[Plot] = []
         self.x_range = (0, 0)
         self.y_range = (0, 0)
@@ -51,29 +56,42 @@ class Axis(Frame):
     def render(self, scene):
         x_step = (self.x_range[1] - self.x_range[0]) / self.num_ticks
         y_step = (self.y_range[1] - self.y_range[0]) / self.num_ticks
-        axes = Axes(
-            x_range=[
-                self.x_range[0] * 2,
-                self.x_range[1] * 2,
-                x_step,
-            ],
-            y_range=[
-                self.y_range[0] * 2,
-                self.y_range[1] * 2,
-                y_step,
-            ],
-            axis_config={"color": WHITE},
-            tips=False,
-            x_axis_config={"unit_size": 0.5},
-            y_axis_config={"unit_size": 0.5},
+
+        x_range = [
+            self.x_range[0] * 2,
+            self.x_range[1] * 2,
+            x_step,
+        ]
+
+        y_range = [
+            self.y_range[0] * 2,
+            self.y_range[1] * 2,
+            y_step,
+        ]
+
+        if self.container_type == "Axis":
+            container = Axes(
+                x_range=x_range,
+                y_range=y_range,
+                axis_config={"color": WHITE},
+                tips=False,
+                x_axis_config={"unit_size": 0.5},
+                y_axis_config={"unit_size": 0.5},
+            )
+        else:
+            container = PolarPlane()
+
+        plots, auxillary = map(
+            list, zip(*[item.render(container) for item in self.items])
         )
-        plots, auxillary = map(list, zip(*[item.render(axes) for item in self.items]))
         animations = []
 
-        plots_group = VGroup(axes, *plots)  # Group axes and plots
+        plots_group = VGroup(container, *plots)  # Group axes and plots
 
         animations.append(
-            AnimationItem(animation=axes, phase=AnimationPhase.SETUP, animate=False)
+            AnimationItem(
+                animation=container, phase=AnimationPhase.SETUP, animate=False
+            )
         )
 
         for plot in plots:
