@@ -3,19 +3,20 @@ from manim import *
 from typing import List, Callable
 from enum import Enum, auto
 from arcane.graphics.animation import AnimationItem, AnimationPhase
-from arcane.graphics.objects import Frame
+from arcane.graphics.objects import Frame, SceneBuilder
 from arcane.graphics.utils import layout_horizontal
 
 
-def construct_scene(frames: List[Frame]):
+def construct_scene(scene_builder: SceneBuilder):
     class ArcaneScene(Scene):
         def construct(self):
             containers = []
             all_animation_items = []
 
+            scene_builder.build()
+
             # Collect all containers and animation items
-            for frame in frames:
-                container, animation_items = frame.render(self)
+            for container, animation_items in scene_builder.frames:
                 containers.append(container)
                 all_animation_items.extend(animation_items)
 

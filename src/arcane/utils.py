@@ -1,4 +1,5 @@
 from pathlib import Path
+import uuid
 
 
 def get_project_root(marker: str = "pyproject.toml"):
@@ -7,3 +8,7 @@ def get_project_root(marker: str = "pyproject.toml"):
         if (parent / marker).exists():
             return parent
     return current_path  # Fallback if marker isn't found
+
+
+def gen_id():
+    return str(uuid.uuid4())

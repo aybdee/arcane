@@ -1,14 +1,18 @@
 start : program
 program : statement* 
-statement : definition | animate_declaration | axis_declaration NEWLINE
+statement : definition | animate_declaration | axis_declaration | polar_declaration NEWLINE
 definition : "Define" IDENT "as" (expression math_transform) 
 expression : math_function | algebraic_expression
 
 
 
-animate_declaration: "@" (IDENT | (IDENT | math_function) math_transform) ["and" sweep_dot]
+animate_declaration: "@" (IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]
+show_declaration: "show" vertical_line_declaration
+
+vertical_line_declaration: "vertical lines on" IDENT
 
 sweep_dot: "sweep dot across"
+
 
 sweep: "from" numerical_expression "to" numerical_expression
 assign: IDENT "="  numerical_expression
@@ -16,6 +20,7 @@ math_transform: [sweep]
 
 
 axis_declaration: "on" "axis" IDENT "{" (animate_declaration NEWLINE)* "}"
+polar_declaration: "on" "polar" IDENT "{" (animate_declaration NEWLINE)* "}"
 
 
 

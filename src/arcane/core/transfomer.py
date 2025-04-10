@@ -13,12 +13,14 @@ from arcane.core.constructs import (
     ArcaneType,
     MathTransform,
     ParametricMathFunction,
+    PolarBlock,
     PolarMathFunction,
     Program,
     RegularMathFunction,
     SweepDotTransform,
     SweepTransform,
     AxisBlock,
+    VLines,
 )
 
 
@@ -75,6 +77,24 @@ class ArcaneTransfomer(Transformer):
 
     def sweep_dot(self, _):
         return SweepDotTransform()
+
+    def vertical_line_declaration(self, items):
+        return VLines(variable=items[0])
+
+    def show_declaration(self, items):
+        return items[0]
+
+    @filter_none
+    def polar_declaration(self, items):
+        identifier = None
+        animations = []
+        for item in items:
+            if isinstance(item, Identifier):
+                identifier = item
+            else:
+                animations.append(item)
+        assert identifier is not None
+        return PolarBlock(name=identifier, animations=animations)
 
     @filter_none
     def axis_declaration(self, items):

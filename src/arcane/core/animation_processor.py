@@ -7,6 +7,7 @@ from arcane.core.constructs import (
     ParametricMathFunction,
     PolarMathFunction,
     RegularMathFunction,
+    VLines,
 )
 from arcane.core.interpreter_types import (
     InterpreterError,
@@ -22,6 +23,7 @@ from arcane.graphics.constructor import (
 from arcane.graphics.objects import Plot
 
 from arcane.core.store import Store
+from arcane.utils import gen_id
 
 
 class AnimationProcessor:
@@ -44,31 +46,31 @@ class AnimationProcessor:
         return evaluated_expr
 
     def handle_polar_math_function(
-        self, function: PolarMathFunction, transforms: List[Any]
+        self, id: str, function: PolarMathFunction, transforms: List[Any]
     ) -> Plot:
         """Process a regular math function and return a rendered plot"""
         # Process the expressions with any stored variables
         function.expression = self.process_expression(function.expression)
         # Render the function
-        return render_polar_math_function(function, transforms)
+        return render_polar_math_function(id, function, transforms)
 
     def handle_regular_math_function(
-        self, function: RegularMathFunction, transforms: List[Any]
+        self, id: str, function: RegularMathFunction, transforms: List[Any]
     ) -> Plot:
         """Process a regular math function and return a rendered plot"""
         # Process the expressions with any stored variables
         function.expression = self.process_expression(function.expression)
         # Render the function
-        return render_regular_math_function(function, transforms)
+        return render_regular_math_function(id, function, transforms)
 
     def handle_parametric_math_function(
-        self, function: ParametricMathFunction, transforms: List[Any]
+        self, id: str, function: ParametricMathFunction, transforms: List[Any]
     ) -> Plot:
         """Process a parametric math function and return a rendered plot"""
         # Process all expressions with any stored variables
         function.expressions = list(map(self.process_expression, function.expressions))
         # Render the function
-        return render_parametric_math_function(function, transforms)
+        return render_parametric_math_function(id, function, transforms)
 
     def process_animation(self, animation: Animation) -> InterpreterMessage:
         """Process an animation and return the result"""
@@ -87,7 +89,9 @@ class AnimationProcessor:
             raise
         except Exception as e:
             # Wrap other exceptions in an interpreter error
-            raise InterpreterError(InterpreterErrorCode.ANIMATION_ERROR, details=str(e))
+            raise e
+            # TODO: change-back
+            # raise InterpreterError(InterpreterErrorCode.ANIMATION_ERROR, details=str(e))
 
     def _process_identifier_animation(
         self, identifier: Identifier
@@ -97,34 +101,35 @@ class AnimationProcessor:
         return self.process_animation(Animation(value=value))
 
     def _process_instance_animation(
-        self, instance_animation: InstanceAnimation
+        self, instance_animation: InstanceAnimation, id: str = ""
     ) -> InterpreterMessage:
         """Process an instance animation"""
         instance = instance_animation.instance
         transforms = instance_animation.transforms
+        id = id if id else gen_id()
 
         if isinstance(instance, RegularMathFunction):
-            plot = self.handle_regular_math_function(instance, transforms)
+            plot = self.handle_regular_math_function(id, instance, transforms)
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
 
         if isinstance(instance, PolarMathFunction):
-            plot = self.handle_polar_math_function(instance, transforms)
+            plot = self.handle_polar_math_function(id, instance, transforms)
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
 
         elif isinstance(instance, ParametricMathFunction):
-            plot = self.handle_parametric_math_function(instance, transforms)
+            plot = self.handle_parametric_math_function(id, instance, transforms)
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
 
         elif isinstance(instance, Identifier):
             # Resolve the identifier and process the result
             resolved_value = self.store.get_or_throw(instance.value)
-            return self.process_animation(
-                Animation(
-                    value=InstanceAnimation(
-                        instance=resolved_value, transforms=transforms
-                    )
-                )
+            return self._process_instance_animation(
+                InstanceAnimation(instance=resolved_value, transforms=transforms),
+                instance.value,
             )
+
+        # elif isinstance(instance, VLines):
+        #     pass
 
         else:
             raise InterpreterError(

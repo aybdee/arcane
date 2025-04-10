@@ -57,7 +57,7 @@ class PolarMathFunction:
 ####### animation primitives
 @dataclass
 class InstanceAnimation:
-    instance: Identifier | MathFunction
+    instance: Identifier | MathFunction | VLines | SweepDotTransform
     transforms: List[Transform]
 
 
@@ -85,8 +85,19 @@ class AxisBlock:
 
 
 @dataclass
+class PolarBlock:
+    name: Identifier
+    animations: List[InstanceAnimation]
+
+
+@dataclass
 class Program:
     statements: List[Definition | Animation]
+
+
+@dataclass
+class VLines:
+    variable: Identifier
 
 
 ######### end blocks

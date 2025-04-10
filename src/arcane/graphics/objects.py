@@ -1,10 +1,11 @@
 from __future__ import annotations
+import uuid
 from dataclasses import dataclass
-from typing import Callable, Literal, Tuple
+from typing import Callable, Literal, Tuple, Protocol, Any, Optional
 from abc import ABC, abstractmethod
 from arcane.graphics.animation import AnimationItem, AnimationPhase
+from collections import OrderedDict
 from manim import *
-import numpy as np
 
 PlotContainerType = Literal["PolarPlane"] | Literal["Axis"]
 
@@ -14,12 +15,17 @@ class Frame(ABC):
     def render(self, scene) -> Tuple[VGroup, List[AnimationItem]]: ...
 
 
+class Renderable(Protocol):
+    def render(self) -> Any: ...
+
+
 @dataclass
-class Plot:
-    render: Callable
+class Plot(Renderable):
+    id: str
     container_type: PlotContainerType
     x_range: Tuple[float, float]
     y_range: Tuple[float, float]
+    render: Callable
 
 
 @dataclass
@@ -29,7 +35,118 @@ class ArcaneDot:
     end: float
 
 
-class PlotContainer(Frame):
+class SceneBuilder:
+    def __init__(self):
+        self.dependency_tree = OrderedDict()
+        self.frames = []
+        pass
+
+    def num_objects(self):
+        return len(self.dependency_tree.keys())
+
+    def add_object(
+        self,
+        id: str,
+        value: Plot | PlotContainer,
+        dependencies: List[str] = [],
+    ):
+        self.dependency_tree[id] = {
+            "value": value,
+            "dependencies": dependencies,
+        }
+        return id
+
+    def add_dependency(self, id: str, dependency: str):
+        self.dependency_tree[id].append(dependency)
+
+    def get(self, id: str):
+        return self.dependency_tree.get(id)
+
+    def resolve_dependency(self, id):
+        dependency = self.get(id)
+
+        dependants = OrderedDict(
+            (k, v) for k, v in self.dependency_tree.items() if id in v["dependencies"]
+        )
+        assert dependency is not None
+        if isinstance(dependency["value"], Plot):
+            container_id = self.dependency_tree[id]["dependencies"][0]
+            container = self.dependency_tree[container_id]
+            self.dependency_tree[id]["mobject"] = dependency["value"].render(
+                container["mobject"]
+            )
+        if isinstance(dependency["value"], PlotContainer):
+            for dependant_id, dependant in dependants.items():
+                dependency["value"].add(dependant["value"])
+            self.dependency_tree[id]["mobject"] = dependency["value"].render()
+
+            # resolve children
+            for dependant_id in dependants.keys():
+                self.resolve_dependency(dependant_id)
+
+            plots, auxillary = map(
+                list,
+                zip(
+                    *[
+                        self.dependency_tree[dependant_id]["mobject"]
+                        for dependant_id in dependants.keys()
+                    ]
+                ),
+            )
+            animations = []
+
+            plots_group = VGroup(
+                self.dependency_tree[id]["mobject"], *plots
+            )  # Group axes and plots
+
+            animations.append(
+                AnimationItem(
+                    animation=self.dependency_tree[id]["mobject"],
+                    phase=AnimationPhase.SETUP,
+                    animate=False,
+                )
+            )
+
+            for plot in plots:
+                animations.append(
+                    AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
+                )
+
+            for aux_group in auxillary:
+                for construct in aux_group:
+                    if isinstance(construct, ArcaneDot):
+                        animations.append(
+                            AnimationItem(
+                                animation=construct.value,
+                                phase=AnimationPhase.SECONDARY,
+                                animate=False,
+                            )
+                        )
+
+                        animations.append(
+                            AnimationItem(
+                                animation=construct.tracker.animate.set_value(
+                                    construct.end
+                                ),
+                                phase=AnimationPhase.SECONDARY,
+                                config={"rate_func": linear},
+                            )
+                        )
+
+            self.frames.append((plots_group, animations))
+
+    def build(self):
+        no_deps = OrderedDict(
+            (k, v) for k, v in self.dependency_tree.items() if not v["dependencies"]
+        )
+
+        for dependency_id in no_deps.keys():
+            self.resolve_dependency(dependency_id)
+
+        return self.frames
+
+
+class PlotContainer:
     def __init__(self, container_type: PlotContainerType):
         self.container_type = container_type
         self.items: List[Plot] = []
@@ -53,7 +170,7 @@ class PlotContainer(Frame):
             )
         self.items.append(item)
 
-    def render(self, scene):
+    def render(self):
         x_step = (self.x_range[1] - self.x_range[0]) / self.num_ticks
         y_step = (self.y_range[1] - self.y_range[0]) / self.num_ticks
 
@@ -70,7 +187,7 @@ class PlotContainer(Frame):
         ]
 
         if self.container_type == "Axis":
-            container = Axes(
+            return Axes(
                 x_range=x_range,
                 y_range=y_range,
                 axis_config={"color": WHITE},
@@ -79,7 +196,7 @@ class PlotContainer(Frame):
                 y_axis_config={"unit_size": 0.5},
             )
         else:
-            container = PolarPlane()
+            return PolarPlane()
 
         plots, auxillary = map(
             list, zip(*[item.render(container) for item in self.items])

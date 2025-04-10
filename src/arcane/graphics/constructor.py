@@ -17,8 +17,12 @@ import numpy as np
 from enum import Enum
 
 
+def render_vlines_to_function():
+    pass
+
+
 def render_parametric_math_function(
-    function: ParametricMathFunction, transforms: List[ArcaneTransform]
+    id: str, function: ParametricMathFunction, transforms: List[ArcaneTransform]
 ) -> Plot:
     primary_transform = transforms[0]
     auxillary_transforms = transforms[1:]
@@ -70,15 +74,16 @@ def render_parametric_math_function(
         return (graph, auxillary)
 
     return Plot(
-        render,
+        id,
         "Axis",
         x_range=(x_range[0], x_range[1]),
         y_range=(y_range[0], y_range[1]),
+        render=render,
     )
 
 
 def render_polar_math_function(
-    function: PolarMathFunction, transforms: List[ArcaneTransform]
+    id: str, function: PolarMathFunction, transforms: List[ArcaneTransform]
 ) -> Plot:
     x_start = 0
     x_end = 0
@@ -124,12 +129,16 @@ def render_polar_math_function(
         return (graph, auxillary)
 
     return Plot(
-        render, "PolarPlane", x_range=(x_start, x_end), y_range=(y_range[0], y_range[1])
+        id,
+        "PolarPlane",
+        x_range=(x_start, x_end),
+        y_range=(y_range[0], y_range[1]),
+        render=render,
     )
 
 
 def render_regular_math_function(
-    function: RegularMathFunction, transforms: List[ArcaneTransform]
+    id: str, function: RegularMathFunction, transforms: List[ArcaneTransform]
 ) -> Plot:
 
     x_start = 0
@@ -179,5 +188,9 @@ def render_regular_math_function(
         return (graph, auxillary)
 
     return Plot(
-        render, "Axis", x_range=(x_start, x_end), y_range=(y_range[0], y_range[1])
+        id,
+        "Axis",
+        x_range=(x_start, x_end),
+        y_range=(y_range[0], y_range[1]),
+        render=render,
     )
