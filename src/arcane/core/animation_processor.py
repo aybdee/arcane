@@ -7,7 +7,8 @@ from arcane.core.constructs import (
     ParametricMathFunction,
     PolarMathFunction,
     RegularMathFunction,
-    VLines,
+    SweepTransform,
+    VLines as VLinesToken,
 )
 from arcane.core.interpreter_types import (
     InterpreterError,
@@ -19,8 +20,9 @@ from arcane.graphics.constructor import (
     render_parametric_math_function,
     render_polar_math_function,
     render_regular_math_function,
+    render_vlines_to_function,
 )
-from arcane.graphics.objects import Plot
+from arcane.graphics.objects import Plot, VLines
 
 from arcane.core.store import Store
 from arcane.utils import gen_id
@@ -128,8 +130,16 @@ class AnimationProcessor:
                 instance.value,
             )
 
-        # elif isinstance(instance, VLines):
-        #     pass
+        elif isinstance(instance, VLinesToken):
+            assert isinstance(transforms[0], SweepTransform)
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
+                VLines(
+                    id=id,
+                    variable=instance.variable.value,
+                    x_range=[transforms[0].sweep_from, transforms[0].sweep_to],
+                    render=render_vlines_to_function,
+                )
+            )
 
         else:
             raise InterpreterError(

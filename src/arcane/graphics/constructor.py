@@ -17,8 +17,13 @@ import numpy as np
 from enum import Enum
 
 
-def render_vlines_to_function():
-    pass
+def render_vlines_to_function(
+    axes: Axes, math_function: ParametricFunction, x_range: List[float]
+):
+    lines = axes.get_vertical_lines_to_graph(
+        math_function, x_range=x_range, num_lines=10, color=get_random_color()
+    )
+    return lines
 
 
 def render_parametric_math_function(
@@ -75,7 +80,8 @@ def render_parametric_math_function(
 
     return Plot(
         id,
-        "Axis",
+        container_type="Axis",
+        math_function=parametric_function,
         x_range=(x_range[0], x_range[1]),
         y_range=(y_range[0], y_range[1]),
         render=render,
@@ -130,7 +136,8 @@ def render_polar_math_function(
 
     return Plot(
         id,
-        "PolarPlane",
+        container_type="PolarPlane",
+        math_function=math_function,
         x_range=(x_start, x_end),
         y_range=(y_range[0], y_range[1]),
         render=render,
@@ -189,7 +196,8 @@ def render_regular_math_function(
 
     return Plot(
         id,
-        "Axis",
+        container_type="Axis",
+        math_function=math_function,
         x_range=(x_start, x_end),
         y_range=(y_range[0], y_range[1]),
         render=render,

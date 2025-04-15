@@ -11,7 +11,7 @@ from arcane.core.constructs import (
     MathFunction,
     InstanceAnimation,
 )
-from arcane.graphics.objects import PlotContainer, Plot, SceneBuilder
+from arcane.graphics.objects import PlotContainer, Plot, SceneBuilder, VLines
 from arcane.graphics.scene import construct_scene
 
 from arcane.core.interpreter_types import (
@@ -106,8 +106,9 @@ class ArcaneInterpreter:
         for animation in axis_block.animations:
             processed_animation = self._handle_animation(animation)  # type: ignore
             if processed_animation.data:
-                if processed_animation.data.container_type != "Axis":
-                    InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
+                if isinstance(processed_animation.data, Plot):
+                    if processed_animation.data.container_type != "Axis":
+                        InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
                 processed_animations.append(processed_animation.data)
 
         # Return the axis block with its processed animations
@@ -123,8 +124,9 @@ class ArcaneInterpreter:
         for animation in polar_block.animations:
             processed_animation = self._handle_animation(animation)  # type: ignore
             if processed_animation.data:
-                if processed_animation.data.container_type != "PolarPlane":
-                    InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
+                if isinstance(processed_animation.data, Plot):
+                    if processed_animation.data.container_type != "PolarPlane":
+                        InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
                 processed_animations.append(processed_animation.data)
 
         # Return the axis block with its processed animations
@@ -168,6 +170,14 @@ class ArcaneInterpreter:
                             dependencies=["global_polar"],
                         )
 
+                elif isinstance(result.data, VLines):
+                    scene_builder.add_object(
+                        id=result.data.id,
+                        value=result.data,
+                        dependencies=[result.data.variable],
+                    )
+                    pass
+
                 elif isinstance(result.data, Tuple) and len(result.data) == 2:
                     # Create a new axis for an axis block
                     block, animations = result.data
@@ -177,20 +187,38 @@ class ArcaneInterpreter:
                             id=axis_id, value=PlotContainer("Axis")
                         )
                         for animation in animations:
-                            scene_builder.add_object(
-                                id=animation.id, value=animation, dependencies=[axis_id]
-                            )
+                            if isinstance(animation, Plot):
+                                scene_builder.add_object(
+                                    id=animation.id,
+                                    value=animation,
+                                    dependencies=[axis_id],
+                                )
+                            elif isinstance(animation, VLines):
+                                scene_builder.add_object(
+                                    id=animation.id,
+                                    value=animation,
+                                    dependencies=[animation.variable],
+                                )
+
                     elif isinstance(block, PolarBlock):
                         polar_id = gen_id()
                         scene_builder.add_object(
                             id=polar_id, value=PlotContainer("PolarPlane")
                         )
                         for animation in animations:
-                            scene_builder.add_object(
-                                id=animation.id,
-                                value=animation,
-                                dependencies=[polar_id],
-                            )
+                            if isinstance(animation, Plot):
+                                scene_builder.add_object(
+                                    id=animation.id,
+                                    value=animation,
+                                    dependencies=[polar_id],
+                                )
+
+                            elif isinstance(animation, VLines):
+                                scene_builder.add_object(
+                                    id=animation.id,
+                                    value=animation,
+                                    dependencies=[animation.variable],
+                                )
 
             except InterpreterError as e:
                 print(f"Error: {e}")

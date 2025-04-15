@@ -1,7 +1,15 @@
 Define simple_equation as f(x) = sin(x)
-@show vertical lines on simple_equation from -1 to 1
+Define other_equation as f(x) = cos(x)
 
-on axis one { 
-    @simple_equation from -5 to 5 and sweep dot across
-    @another_simple from -5 to 5 and sweep dot across
+on axis first_axis {
+  @simple_equation from -2 * PI to 2 * PI
+  @show vertical lines on simple_equation from -1 * PI to PI
 }
+
+
+on axis second_axis {
+  @other_equation from -2 * PI to 2 * PI
+  @show vertical lines on other_equation from -1 * PI to PI
+}
+
+

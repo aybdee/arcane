@@ -22,9 +22,18 @@ class Renderable(Protocol):
 @dataclass
 class Plot(Renderable):
     id: str
+    math_function: Callable
     container_type: PlotContainerType
     x_range: Tuple[float, float]
     y_range: Tuple[float, float]
+    render: Callable
+
+
+@dataclass
+class VLines:
+    id: str
+    variable: str
+    x_range: List[float]
     render: Callable
 
 
@@ -38,7 +47,8 @@ class ArcaneDot:
 class SceneBuilder:
     def __init__(self):
         self.dependency_tree = OrderedDict()
-        self.frames = []
+        self.groups = []
+        self.animations = []
         pass
 
     def num_objects(self):
@@ -47,7 +57,7 @@ class SceneBuilder:
     def add_object(
         self,
         id: str,
-        value: Plot | PlotContainer,
+        value: Plot | PlotContainer | VLines,
         dependencies: List[str] = [],
     ):
         self.dependency_tree[id] = {
@@ -62,6 +72,23 @@ class SceneBuilder:
     def get(self, id: str):
         return self.dependency_tree.get(id)
 
+    def collect_all_descendant_mobjects(self, current_id):
+        collected = []
+        direct_dependants = OrderedDict(
+            (k, v)
+            for k, v in self.dependency_tree.items()
+            if current_id in v["dependencies"]
+        )
+        for child_id in direct_dependants:
+            if not self.dependency_tree[child_id].get("mobject"):
+                self.resolve_dependency(child_id)
+
+            mobj = self.dependency_tree[child_id]["mobject"]
+            collected.extend(mobj if isinstance(mobj, (list, tuple)) else [mobj])
+            # Recurse
+            collected.extend(self.collect_all_descendant_mobjects(child_id))
+        return collected
+
     def resolve_dependency(self, id):
         dependency = self.get(id)
 
@@ -75,14 +102,39 @@ class SceneBuilder:
             self.dependency_tree[id]["mobject"] = dependency["value"].render(
                 container["mobject"]
             )
-        if isinstance(dependency["value"], PlotContainer):
+            for dependant_id, dependant in dependants.items():
+                self.resolve_dependency(dependant_id)
+
+        elif isinstance(dependency["value"], VLines):
+            parent_plot_id = dependency["dependencies"][0]
+            parent_plot = self.dependency_tree[parent_plot_id]
+            assert isinstance(parent_plot["value"], Plot)
+            parent_math_function = parent_plot["mobject"][0]
+            parent_axis = self.dependency_tree[parent_plot["dependencies"][0]][
+                "mobject"
+            ]
+            lines = dependency["value"].render(
+                parent_axis, parent_math_function, dependency["value"].x_range
+            )
+            self.dependency_tree[id]["mobject"] = lines
+            self.animations.append(
+                AnimationItem(
+                    animation=Create(lines),
+                    phase=AnimationPhase.SECONDARY,
+                    animate=True,
+                )
+            )
+
+        elif isinstance(dependency["value"], PlotContainer):
             for dependant_id, dependant in dependants.items():
                 dependency["value"].add(dependant["value"])
             self.dependency_tree[id]["mobject"] = dependency["value"].render()
 
+            descendants = []
             # resolve children
             for dependant_id in dependants.keys():
                 self.resolve_dependency(dependant_id)
+                descendants.extend(self.collect_all_descendant_mobjects(dependant_id))
 
             plots, auxillary = map(
                 list,
@@ -93,13 +145,21 @@ class SceneBuilder:
                     ]
                 ),
             )
-            animations = []
+
+            auxillary_mobjects = []
+            for aux in auxillary:
+                if isinstance(aux, ArcaneDot):
+                    auxillary_mobjects.append(aux.value)
+                    pass
 
             plots_group = VGroup(
-                self.dependency_tree[id]["mobject"], *plots
+                self.dependency_tree[id]["mobject"],
+                *plots,
+                *descendants,
+                *auxillary_mobjects,
             )  # Group axes and plots
 
-            animations.append(
+            self.animations.append(
                 AnimationItem(
                     animation=self.dependency_tree[id]["mobject"],
                     phase=AnimationPhase.SETUP,
@@ -108,14 +168,14 @@ class SceneBuilder:
             )
 
             for plot in plots:
-                animations.append(
+                self.animations.append(
                     AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
                 )
 
             for aux_group in auxillary:
                 for construct in aux_group:
                     if isinstance(construct, ArcaneDot):
-                        animations.append(
+                        self.animations.append(
                             AnimationItem(
                                 animation=construct.value,
                                 phase=AnimationPhase.SECONDARY,
@@ -123,7 +183,7 @@ class SceneBuilder:
                             )
                         )
 
-                        animations.append(
+                        self.animations.append(
                             AnimationItem(
                                 animation=construct.tracker.animate.set_value(
                                     construct.end
@@ -133,7 +193,7 @@ class SceneBuilder:
                             )
                         )
 
-            self.frames.append((plots_group, animations))
+            self.groups.append(plots_group)
 
     def build(self):
         no_deps = OrderedDict(
@@ -142,8 +202,6 @@ class SceneBuilder:
 
         for dependency_id in no_deps.keys():
             self.resolve_dependency(dependency_id)
-
-        return self.frames
 
 
 class PlotContainer:
@@ -197,44 +255,3 @@ class PlotContainer:
             )
         else:
             return PolarPlane()
-
-        plots, auxillary = map(
-            list, zip(*[item.render(container) for item in self.items])
-        )
-        animations = []
-
-        plots_group = VGroup(container, *plots)  # Group axes and plots
-
-        animations.append(
-            AnimationItem(
-                animation=container, phase=AnimationPhase.SETUP, animate=False
-            )
-        )
-
-        for plot in plots:
-            animations.append(
-                AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
-            )
-
-        for aux_group in auxillary:
-            for construct in aux_group:
-                if isinstance(construct, ArcaneDot):
-                    animations.append(
-                        AnimationItem(
-                            animation=construct.value,
-                            phase=AnimationPhase.SECONDARY,
-                            animate=False,
-                        )
-                    )
-
-                    animations.append(
-                        AnimationItem(
-                            animation=construct.tracker.animate.set_value(
-                                construct.end
-                            ),
-                            phase=AnimationPhase.SECONDARY,
-                            config={"rate_func": linear},
-                        )
-                    )
-
-        return plots_group, animations
