@@ -5,6 +5,7 @@ from arcane.core.constructs import (
     ParametricMathFunction,
     PolarMathFunction,
     RegularMathFunction,
+    RelativePositionPlacement,
     SweepDotTransform,
     SweepTransform,
 )
@@ -17,11 +18,36 @@ import numpy as np
 from enum import Enum
 
 
+def render_relative_text(
+    text: str, relative_mobject: Mobject, relative_placement: RelativePositionPlacement
+):
+    text_mobject = Text(text)
+    if relative_placement == RelativePositionPlacement.ABOVE:
+        text_mobject = text_mobject.next_to(relative_mobject, UP)
+
+    elif relative_placement == RelativePositionPlacement.BELOW:
+        text_mobject = text_mobject.next_to(relative_mobject, DOWN)
+
+    elif relative_placement == RelativePositionPlacement.LEFT:
+        text_mobject = text_mobject.next_to(relative_mobject, LEFT)
+
+    elif relative_placement == RelativePositionPlacement.RIGHT:
+        text_mobject = text_mobject.next_to(relative_mobject, RIGHT)
+
+    return text_mobject
+
+
 def render_vlines_to_function(
-    axes: Axes, math_function: ParametricFunction, x_range: List[float]
+    axes: Axes,
+    math_function: ParametricFunction,
+    x_range: List[float],
+    num_lines: float,
 ):
     lines = axes.get_vertical_lines_to_graph(
-        math_function, x_range=x_range, num_lines=10, color=get_random_color()
+        math_function,
+        x_range=x_range,
+        num_lines=int(num_lines),
+        color=get_random_color(),
     )
     return lines
 

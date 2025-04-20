@@ -8,7 +8,6 @@ from arcane.core.constructs import (
     Animation,
     Definition,
     Identifier,
-    InstanceAnimation,
     MathFunction,
     ArcaneType,
     MathTransform,
@@ -17,9 +16,12 @@ from arcane.core.constructs import (
     PolarMathFunction,
     Program,
     RegularMathFunction,
+    RelativePosition,
+    RelativePositionPlacement,
     SweepDotTransform,
     SweepTransform,
     AxisBlock,
+    TextAnimation,
     VLines,
 )
 
@@ -33,6 +35,10 @@ def filter_none(func):
     return wrapper
 
 
+def safe_get(lst, index, default=None):
+    return lst[index] if 0 <= index < len(lst) else default
+
+
 class ArcaneTransfomer(Transformer):
     def program(self, items):
         statements = []
@@ -44,16 +50,12 @@ class ArcaneTransfomer(Transformer):
         name = None
         value = None
         arctype = None
-        transform = None
         for item in items:
             if isinstance(item, Identifier):
                 name = item
             elif isinstance(item, MathFunction):
                 arctype = ArcaneType.MATHFUNCTION
                 value = item
-
-            elif isinstance(item, MathTransform):
-                transform = item
 
             elif isinstance(item, Float):
                 value = float(item)
@@ -64,22 +66,26 @@ class ArcaneTransfomer(Transformer):
         assert name is not None
         assert value is not None
         assert arctype is not None
-        return Definition(arctype, name, value, transform)
+        return Definition(arctype, name, value)
 
     def animate_declaration(self, items):
         items = list(filter(lambda x: x != None, items))
-        if len(items) == 1:
-            return Animation(value=items[0])
-        else:
-            return Animation(
-                value=InstanceAnimation(instance=items[0], transforms=items[1:])
-            )
+        return Animation(instance=items[0], transforms=items[1:])
 
     def sweep_dot(self, _):
         return SweepDotTransform()
 
     def vertical_line_declaration(self, items):
-        return VLines(variable=items[0])
+        return VLines(variable=items[1], num_lines=items[0])
+
+    def write_declaration(self, items):
+        if len(items) == 1:
+            return TextAnimation(value=items[0], position=None)
+        elif len(items) == 3:
+            return TextAnimation(
+                value=items[0],
+                position=RelativePosition(variable=items[2], placement=items[1]),
+            )
 
     def show_declaration(self, items):
         return items[0]
@@ -244,6 +250,20 @@ class ArcaneTransfomer(Transformer):
 
     def constant(self, items):
         return items[0]
+
+    def STRING(self, items):
+        return str(items)[1:-1]
+
+    def RELATIVE_POSITION(self, items):
+        value = str(items)
+        if value == "below":
+            return RelativePositionPlacement.BELOW
+        elif value == "above":
+            return RelativePositionPlacement.ABOVE
+        elif value == "left of":
+            return RelativePositionPlacement.LEFT
+        else:
+            return RelativePositionPlacement.RIGHT
 
     def NEWLINE(self, _):
         pass

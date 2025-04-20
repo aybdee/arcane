@@ -1,7 +1,7 @@
 from __future__ import annotations
 from lark import ParseTree
 from dataclasses import dataclass
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from enum import Enum
 
 
@@ -9,6 +9,19 @@ from enum import Enum
 class ArcaneType(Enum):
     MATHFUNCTION = "MATH"
     NUMBER = "NUMBER"
+
+
+class RelativePositionPlacement(Enum):
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+    ABOVE = "ABOVE"
+    BELOW = "BELOW"
+
+
+@dataclass
+class RelativePosition:
+    variable: Identifier
+    placement: RelativePositionPlacement
 
 
 @dataclass(frozen=True, eq=True)
@@ -56,14 +69,15 @@ class PolarMathFunction:
 
 ####### animation primitives
 @dataclass
-class InstanceAnimation:
-    instance: Identifier | MathFunction | VLines | SweepDotTransform
+class Animation:
+    instance: Identifier | MathFunction | VLines | TextAnimation | SweepDotTransform
     transforms: List[Transform]
 
 
 @dataclass
-class Animation:
-    value: Animatable
+class TextAnimation:
+    value: str
+    position: Optional[RelativePosition]
 
 
 ####### end animation primitives
@@ -75,19 +89,18 @@ class Definition:
     type: ArcaneType
     name: Identifier
     value: MathFunction | float
-    transform: MathTransform | None
 
 
 @dataclass
 class AxisBlock:
     name: Identifier
-    animations: List[InstanceAnimation]
+    animations: List[Animation]
 
 
 @dataclass
 class PolarBlock:
     name: Identifier
-    animations: List[InstanceAnimation]
+    animations: List[Animation]
 
 
 @dataclass
@@ -98,13 +111,13 @@ class Program:
 @dataclass
 class VLines:
     variable: Identifier
+    num_lines: float
 
 
 ######### end blocks
 
 ########### union type definitions
 MathFunction = RegularMathFunction | ParametricMathFunction | PolarMathFunction
-Animatable = InstanceAnimation | MathFunction | Identifier
 MathTransform = SweepTransform
 Transform = MathTransform | SweepDotTransform
 ########### end union type definitions

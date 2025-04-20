@@ -1,10 +1,12 @@
 from __future__ import annotations
 import uuid
 from dataclasses import dataclass
-from typing import Callable, Literal, Tuple, Protocol, Any, Optional
+from typing import Callable, Generic, Literal, Tuple, Protocol, Any, Optional, TypeVar
 from abc import ABC, abstractmethod
+from arcane.core.constructs import RelativePosition, RelativePositionPlacement
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from collections import OrderedDict
+from pprint import pprint
 from manim import *
 
 PlotContainerType = Literal["PolarPlane"] | Literal["Axis"]
@@ -16,7 +18,7 @@ class Frame(ABC):
 
 
 class Renderable(Protocol):
-    def render(self) -> Any: ...
+    def render(self) -> Mobject: ...
 
 
 @dataclass
@@ -34,6 +36,7 @@ class VLines:
     id: str
     variable: str
     x_range: List[float]
+    num_lines: float
     render: Callable
 
 
@@ -44,164 +47,13 @@ class ArcaneDot:
     end: float
 
 
-class SceneBuilder:
-    def __init__(self):
-        self.dependency_tree = OrderedDict()
-        self.groups = []
-        self.animations = []
-        pass
-
-    def num_objects(self):
-        return len(self.dependency_tree.keys())
-
-    def add_object(
-        self,
-        id: str,
-        value: Plot | PlotContainer | VLines,
-        dependencies: List[str] = [],
-    ):
-        self.dependency_tree[id] = {
-            "value": value,
-            "dependencies": dependencies,
-        }
-        return id
-
-    def add_dependency(self, id: str, dependency: str):
-        self.dependency_tree[id].append(dependency)
-
-    def get(self, id: str):
-        return self.dependency_tree.get(id)
-
-    def collect_all_descendant_mobjects(self, current_id):
-        collected = []
-        direct_dependants = OrderedDict(
-            (k, v)
-            for k, v in self.dependency_tree.items()
-            if current_id in v["dependencies"]
-        )
-        for child_id in direct_dependants:
-            if not self.dependency_tree[child_id].get("mobject"):
-                self.resolve_dependency(child_id)
-
-            mobj = self.dependency_tree[child_id]["mobject"]
-            collected.extend(mobj if isinstance(mobj, (list, tuple)) else [mobj])
-            # Recurse
-            collected.extend(self.collect_all_descendant_mobjects(child_id))
-        return collected
-
-    def resolve_dependency(self, id):
-        dependency = self.get(id)
-
-        dependants = OrderedDict(
-            (k, v) for k, v in self.dependency_tree.items() if id in v["dependencies"]
-        )
-        assert dependency is not None
-        if isinstance(dependency["value"], Plot):
-            container_id = self.dependency_tree[id]["dependencies"][0]
-            container = self.dependency_tree[container_id]
-            self.dependency_tree[id]["mobject"] = dependency["value"].render(
-                container["mobject"]
-            )
-            for dependant_id, dependant in dependants.items():
-                self.resolve_dependency(dependant_id)
-
-        elif isinstance(dependency["value"], VLines):
-            parent_plot_id = dependency["dependencies"][0]
-            parent_plot = self.dependency_tree[parent_plot_id]
-            assert isinstance(parent_plot["value"], Plot)
-            parent_math_function = parent_plot["mobject"][0]
-            parent_axis = self.dependency_tree[parent_plot["dependencies"][0]][
-                "mobject"
-            ]
-            lines = dependency["value"].render(
-                parent_axis, parent_math_function, dependency["value"].x_range
-            )
-            self.dependency_tree[id]["mobject"] = lines
-            self.animations.append(
-                AnimationItem(
-                    animation=Create(lines),
-                    phase=AnimationPhase.SECONDARY,
-                    animate=True,
-                )
-            )
-
-        elif isinstance(dependency["value"], PlotContainer):
-            for dependant_id, dependant in dependants.items():
-                dependency["value"].add(dependant["value"])
-            self.dependency_tree[id]["mobject"] = dependency["value"].render()
-
-            descendants = []
-            # resolve children
-            for dependant_id in dependants.keys():
-                self.resolve_dependency(dependant_id)
-                descendants.extend(self.collect_all_descendant_mobjects(dependant_id))
-
-            plots, auxillary = map(
-                list,
-                zip(
-                    *[
-                        self.dependency_tree[dependant_id]["mobject"]
-                        for dependant_id in dependants.keys()
-                    ]
-                ),
-            )
-
-            auxillary_mobjects = []
-            for aux in auxillary:
-                if isinstance(aux, ArcaneDot):
-                    auxillary_mobjects.append(aux.value)
-                    pass
-
-            plots_group = VGroup(
-                self.dependency_tree[id]["mobject"],
-                *plots,
-                *descendants,
-                *auxillary_mobjects,
-            )  # Group axes and plots
-
-            self.animations.append(
-                AnimationItem(
-                    animation=self.dependency_tree[id]["mobject"],
-                    phase=AnimationPhase.SETUP,
-                    animate=False,
-                )
-            )
-
-            for plot in plots:
-                self.animations.append(
-                    AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
-                )
-
-            for aux_group in auxillary:
-                for construct in aux_group:
-                    if isinstance(construct, ArcaneDot):
-                        self.animations.append(
-                            AnimationItem(
-                                animation=construct.value,
-                                phase=AnimationPhase.SECONDARY,
-                                animate=False,
-                            )
-                        )
-
-                        self.animations.append(
-                            AnimationItem(
-                                animation=construct.tracker.animate.set_value(
-                                    construct.end
-                                ),
-                                phase=AnimationPhase.SECONDARY,
-                                config={"rate_func": linear},
-                            )
-                        )
-
-            self.groups.append(plots_group)
-
-    def build(self):
-        no_deps = OrderedDict(
-            (k, v) for k, v in self.dependency_tree.items() if not v["dependencies"]
-        )
-
-        for dependency_id in no_deps.keys():
-            self.resolve_dependency(dependency_id)
+@dataclass
+class ArcaneText:
+    id: str
+    text: str
+    relative_to: str
+    relative_placement: RelativePositionPlacement
+    render: Callable
 
 
 class PlotContainer:
@@ -255,3 +107,230 @@ class PlotContainer:
             )
         else:
             return PolarPlane()
+
+
+SceneObject = Plot | PlotContainer | VLines | ArcaneText
+
+
+@dataclass
+class DependencyNode:
+    """A node in the dependency tree."""
+
+    value: SceneObject
+    dependencies: List[str]
+    mobject: Optional[Any] = None
+    auxillary_mobjects: Optional[List[Any]] = None
+
+
+class SceneBuilder:
+    def __init__(self):
+        self.dependency_tree: OrderedDict[str, DependencyNode] = OrderedDict()
+        self.groups: List[Any] = []
+        self.animations: List[AnimationItem] = []
+
+    def num_objects(self) -> int:
+        return len(self.dependency_tree.keys())
+
+    def add_object(
+        self,
+        id: str,
+        value: SceneObject,
+        dependencies: List[str] = [],
+    ) -> str:
+        self.dependency_tree[id] = DependencyNode(
+            value=value,
+            dependencies=dependencies,
+        )
+        return id
+
+    def add_dependency(self, id: str, dependency: str) -> None:
+        if id in self.dependency_tree:
+            self.dependency_tree[id].dependencies.append(dependency)
+
+    def get(self, id: str) -> Optional[DependencyNode]:
+        return self.dependency_tree.get(id)
+
+    def collect_all_descendant_mobjects(self, current_id: str) -> List[Any]:
+        collected: List[Any] = []
+        direct_dependants = OrderedDict(
+            (k, v)
+            for k, v in self.dependency_tree.items()
+            if current_id in v.dependencies
+        )
+        for child_id in direct_dependants:
+            node = self.dependency_tree[child_id]
+            if node.mobject is None:
+                self.resolve_dependency(child_id)
+
+            mobj = node.mobject
+            if mobj is not None:
+                collected.extend(mobj if isinstance(mobj, (list, tuple)) else [mobj])
+
+            # Recurse
+            collected.extend(self.collect_all_descendant_mobjects(child_id))
+        return collected
+
+    def resolve_dependency(self, id: str) -> None:
+        node = self.get(id)
+        if node is None:
+            raise ValueError(f"Dependency with ID {id} not found")
+
+        dependants = OrderedDict(
+            (k, v) for k, v in self.dependency_tree.items() if id in v.dependencies
+        )
+
+        if isinstance(node.value, Plot):
+            container_id = node.dependencies[0]
+            container = self.dependency_tree[container_id]
+            if container.mobject is None:
+                raise ValueError(
+                    f"Container mobject for {container_id} is not resolved"
+                )
+            rendered = node.value.render(container.mobject)
+            node.mobject = rendered[0]
+            node.auxillary_mobjects = rendered[1]
+            for dependant_id in dependants.keys():
+                self.resolve_dependency(dependant_id)
+
+        elif isinstance(node.value, ArcaneText):
+            parent_object_id = node.dependencies[0]
+            parent_object = self.dependency_tree[parent_object_id]
+
+            assert parent_object.mobject is not None
+            text_mobject = node.value.render(
+                node.value.text,
+                parent_object.mobject,
+                node.value.relative_placement,
+            )
+
+            self.animations.append(
+                AnimationItem(
+                    animation=Write(text_mobject),
+                    phase=AnimationPhase.PRIMARY,
+                    animate=True,
+                )
+            )
+
+            node.mobject = text_mobject
+
+        elif isinstance(node.value, VLines):
+            parent_plot_id = node.dependencies[0]
+            parent_plot = self.dependency_tree[parent_plot_id]
+
+            if not isinstance(parent_plot.value, Plot):
+                raise ValueError(
+                    f"Expected Plot for {parent_plot_id}, got {type(parent_plot.value)}"
+                )
+            assert parent_plot.mobject is not None
+            parent_math_function = parent_plot.mobject
+            parent_axis_id = parent_plot.dependencies[0]
+            parent_axis_node = self.dependency_tree[parent_axis_id]
+
+            if parent_axis_node.mobject is None:
+                raise ValueError(
+                    f"Parent axis mobject for {parent_axis_id} is not resolved"
+                )
+
+            parent_axis = parent_axis_node.mobject
+
+            lines = node.value.render(
+                parent_axis,
+                parent_math_function,
+                node.value.x_range,
+                node.value.num_lines,
+            )
+            node.mobject = lines
+            self.animations.append(
+                AnimationItem(
+                    animation=Create(lines),
+                    phase=AnimationPhase.SECONDARY,
+                    animate=True,
+                )
+            )
+
+        elif isinstance(node.value, PlotContainer):
+            for dependant_id in dependants.keys():
+                dependant = self.dependency_tree[dependant_id]
+                if isinstance(dependant.value, Plot):
+                    node.value.add(dependant.value)
+
+            node.mobject = node.value.render()
+
+            descendants: List[Any] = []
+            # resolve children
+            for dependant_id in dependants.keys():
+                self.resolve_dependency(dependant_id)
+                descendants.extend(self.collect_all_descendant_mobjects(dependant_id))
+
+            plots_and_aux: List[Tuple[Any, Any]] = [
+                (
+                    self.dependency_tree[dependant_id].mobject,
+                    self.dependency_tree[dependant_id].auxillary_mobjects,
+                )
+                for dependant_id in dependants.keys()
+                if self.dependency_tree[dependant_id].mobject is not None
+                and isinstance(self.dependency_tree[dependant_id].value, Plot)
+            ]
+
+            if not plots_and_aux:
+                plots = []
+                auxillary = []
+            else:
+                plots, auxillary = map(list, zip(*plots_and_aux))
+
+            auxillary_mobjects: List[Any] = []
+            for aux in auxillary:
+                if isinstance(aux, ArcaneDot):
+                    auxillary_mobjects.append(aux.value)
+
+            plots_group = VGroup(
+                node.mobject,
+                *plots,
+                *descendants,
+                *auxillary_mobjects,
+            )  # Group axes and plots
+
+            self.animations.append(
+                AnimationItem(
+                    animation=node.mobject,
+                    phase=AnimationPhase.SETUP,
+                    animate=False,
+                )
+            )
+
+            for plot in plots:
+                self.animations.append(
+                    AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
+                )
+
+            for aux_group in auxillary:
+                for construct in aux_group:
+                    if isinstance(construct, ArcaneDot):
+                        self.animations.append(
+                            AnimationItem(
+                                animation=construct.value,
+                                phase=AnimationPhase.SECONDARY,
+                                animate=False,
+                            )
+                        )
+
+                        self.animations.append(
+                            AnimationItem(
+                                animation=construct.tracker.animate.set_value(
+                                    construct.end
+                                ),
+                                phase=AnimationPhase.SECONDARY,
+                                config={"rate_func": linear},
+                            )
+                        )
+
+            self.groups.append(plots_group)
+
+    def build(self) -> None:
+        pprint(self.dependency_tree)
+        no_deps = OrderedDict(
+            (k, v) for k, v in self.dependency_tree.items() if not v.dependencies
+        )
+
+        for dependency_id in no_deps.keys():
+            self.resolve_dependency(dependency_id)

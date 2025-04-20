@@ -8,10 +8,14 @@ from arcane.core.constructs import (
     Definition,
     PolarBlock,
     Program,
-    MathFunction,
-    InstanceAnimation,
 )
-from arcane.graphics.objects import PlotContainer, Plot, SceneBuilder, VLines
+from arcane.graphics.objects import (
+    ArcaneText,
+    PlotContainer,
+    Plot,
+    SceneBuilder,
+    VLines,
+)
 from arcane.graphics.scene import construct_scene
 
 from arcane.core.interpreter_types import (
@@ -36,6 +40,7 @@ class ArcaneInterpreter:
     def __init__(self, program: Program):
         self.program = program
         self.store = Store()
+        self.scene_builder = SceneBuilder()
         self.animation_processor = AnimationProcessor(self.store)
         self.instruction_pointer = 0
 
@@ -54,15 +59,15 @@ class ArcaneInterpreter:
         self.instruction_pointer += 1
 
         try:
-            # Handle different statement types
             if isinstance(current_statement, Definition):
-                return self._handle_definition(current_statement)
+                self.store.add(current_statement.name.value, current_statement.value)
+                return InterpreterMessage(InterpreterMessageType.SUCCESS)
             elif isinstance(current_statement, Animation):
-                return self._handle_animation(current_statement)
-            elif isinstance(current_statement, AxisBlock):
-                return self._handle_axis_block(current_statement)
-            elif isinstance(current_statement, PolarBlock):
-                return self._handle_polar_block(current_statement)
+                return self.animation_processor.process_animation(current_statement)
+            elif isinstance(current_statement, AxisBlock) or isinstance(
+                current_statement, PolarBlock
+            ):
+                return self._handle_plot_block(current_statement)
             else:
                 # Handle unsupported statement type
                 raise InterpreterError(
@@ -70,164 +75,108 @@ class ArcaneInterpreter:
                     statement_type=type(current_statement).__name__,
                 )
         except InterpreterError:
-            # Re-raise interpreter errors
             raise
         except Exception as e:
-            # Wrap other exceptions in an interpreter error
             raise e
-            # raise InterpreterError(InterpreterErrorCode.UNKNOWN, details=str(e))
+            # raise InterpreterError(InterpreterErrorCode.UNKNOWN, details=str(e)) #TODO:(uncomment)
 
-    def _handle_definition(self, definition: Definition) -> InterpreterMessage:
-        """Handle a definition statement"""
-        if definition.transform and isinstance(definition.value, MathFunction):
-            # Store a function with its transform
-            self.store.add(
-                definition.name.value,
-                InstanceAnimation(
-                    instance=definition.value, transforms=[definition.transform]
-                ),
-            )
-        else:
-            # Store a regular value
-            self.store.add(definition.name.value, definition.value)
-
-        return InterpreterMessage(InterpreterMessageType.SUCCESS)
-
-    def _handle_animation(self, animation: Animation) -> InterpreterMessage:
-        """Handle an animation statement"""
-        # Delegate to the animation processor
-        return self.animation_processor.process_animation(animation)
-
-    def _handle_axis_block(self, axis_block: AxisBlock) -> InterpreterMessage:
-        """Handle an axis block statement"""
+    def _handle_plot_block(self, block: AxisBlock | PolarBlock) -> InterpreterMessage:
+        """Handle an AxisBlock or PolarBlock statement"""
         processed_animations = []
 
-        # Process each animation in the axis block
-        for animation in axis_block.animations:
-            processed_animation = self._handle_animation(animation)  # type: ignore
+        expected_container = None
+        if isinstance(block, AxisBlock):
+            expected_container = "Axis"
+        elif isinstance(block, PolarBlock):
+            expected_container = "PolarPlane"
+
+        for animation in block.animations:
+            processed_animation = self.animation_processor.process_animation(animation)
             if processed_animation.data:
                 if isinstance(processed_animation.data, Plot):
-                    if processed_animation.data.container_type != "Axis":
+                    if processed_animation.data.container_type != expected_container:
                         InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
                 processed_animations.append(processed_animation.data)
 
-        # Return the axis block with its processed animations
         return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
-            (axis_block, processed_animations)
+            (block, processed_animations)
         )
 
-    def _handle_polar_block(self, polar_block: PolarBlock) -> InterpreterMessage:
-        """Handle an polar block statement"""
-        processed_animations = []
+    def _add_plot_block_to_builder(self, block: AxisBlock | PolarBlock, animations):
+        if isinstance(block, AxisBlock):
+            container_type = "Axis"
+        elif isinstance(block, PolarBlock):
+            container_type = "PolarPlane"
 
-        # Process each animation in the axis block
-        for animation in polar_block.animations:
-            processed_animation = self._handle_animation(animation)  # type: ignore
-            if processed_animation.data:
-                if isinstance(processed_animation.data, Plot):
-                    if processed_animation.data.container_type != "PolarPlane":
-                        InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
-                processed_animations.append(processed_animation.data)
-
-        # Return the axis block with its processed animations
-        return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
-            (polar_block, processed_animations)
+        self.scene_builder.add_object(
+            id=block.name.value, value=PlotContainer(container_type)
         )
+
+        for animation in animations:
+            if isinstance(animation, Plot):
+                self.scene_builder.add_object(
+                    id=animation.id,
+                    value=animation,
+                    dependencies=[block.name.value],
+                )
+            elif isinstance(animation, VLines):
+                self.scene_builder.add_object(
+                    id=animation.id,
+                    value=animation,
+                    dependencies=[animation.variable],
+                )
 
     def run(self) -> None:
         """Run the entire program"""
-        scene_builder = SceneBuilder()
 
-        # Execute all statements in the program
         for _ in range(len(self.program.statements)):
             try:
                 result = self.execute_next()
-                # Handle the result
                 if isinstance(result.data, Plot):
-                    # Add plots to the global axis
-                    if result.data.container_type == "Axis":
-                        if not scene_builder.get("global_axis"):
-                            scene_builder.add_object(
-                                id="global_axis",
-                                value=PlotContainer("Axis"),
-                            )
-                        scene_builder.add_object(
-                            id=result.data.id,
-                            value=result.data,
-                            dependencies=["global_axis"],
+                    container_type = result.data.container_type
+                    if container_type in ("Axis", "PolarPlane"):
+                        global_id = (
+                            "global_axis"
+                            if container_type == "Axis"
+                            else "global_polar"
                         )
 
-                    elif result.data.container_type == "PolarPlane":
-                        if not scene_builder.get("global_polar"):
-                            scene_builder.add_object(
-                                id="global_axis",
-                                value=PlotContainer("PolarPlane"),
+                        if not self.scene_builder.get(global_id):
+                            self.scene_builder.add_object(
+                                id=global_id,
+                                value=PlotContainer(container_type),
                             )
 
-                        scene_builder.add_object(
+                        self.scene_builder.add_object(
                             id=result.data.id,
                             value=result.data,
-                            dependencies=["global_polar"],
+                            dependencies=[global_id],
                         )
 
                 elif isinstance(result.data, VLines):
-                    scene_builder.add_object(
+                    self.scene_builder.add_object(
                         id=result.data.id,
                         value=result.data,
                         dependencies=[result.data.variable],
                     )
-                    pass
+                elif isinstance(result.data, ArcaneText):
+                    self.scene_builder.add_object(
+                        id=result.data.id,
+                        value=result.data,
+                        dependencies=[result.data.relative_to],
+                    )
 
                 elif isinstance(result.data, Tuple) and len(result.data) == 2:
-                    # Create a new axis for an axis block
                     block, animations = result.data
-                    if isinstance(block, AxisBlock):
-                        axis_id = gen_id()
-                        scene_builder.add_object(
-                            id=axis_id, value=PlotContainer("Axis")
-                        )
-                        for animation in animations:
-                            if isinstance(animation, Plot):
-                                scene_builder.add_object(
-                                    id=animation.id,
-                                    value=animation,
-                                    dependencies=[axis_id],
-                                )
-                            elif isinstance(animation, VLines):
-                                scene_builder.add_object(
-                                    id=animation.id,
-                                    value=animation,
-                                    dependencies=[animation.variable],
-                                )
-
-                    elif isinstance(block, PolarBlock):
-                        polar_id = gen_id()
-                        scene_builder.add_object(
-                            id=polar_id, value=PlotContainer("PolarPlane")
-                        )
-                        for animation in animations:
-                            if isinstance(animation, Plot):
-                                scene_builder.add_object(
-                                    id=animation.id,
-                                    value=animation,
-                                    dependencies=[polar_id],
-                                )
-
-                            elif isinstance(animation, VLines):
-                                scene_builder.add_object(
-                                    id=animation.id,
-                                    value=animation,
-                                    dependencies=[animation.variable],
-                                )
+                    self._add_plot_block_to_builder(block, animations)
 
             except InterpreterError as e:
                 print(f"Error: {e}")
-                # Optionally break execution or continue based on error severity
                 break
 
         # Render the final scene if there are any animation blocks
-        if scene_builder.num_objects() != 0:
-            arcane_animation = construct_scene(scene_builder)()
+        if self.scene_builder.num_objects() != 0:
+            arcane_animation = construct_scene(self.scene_builder)()
             arcane_animation.render()
         else:
             print("No animations to render")
