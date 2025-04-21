@@ -1,6 +1,6 @@
 from __future__ import annotations
 from lark import ParseTree
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
 from enum import Enum
 
@@ -24,16 +24,23 @@ class RelativePosition:
     placement: RelativePositionPlacement
 
 
-@dataclass(frozen=True, eq=True)
+@dataclass(eq=True)
 class Identifier:
+    id: str = field(init=False, compare=False)
     value: str = ""
+
+    def __post_init__(self):
+        self.id = self.value
 
 
 ###### end Primitives
 
 
 ##### Transforms
-class SweepDotTransform: ...
+@dataclass
+class SweepDot:
+    id: str
+    variable: str
 
 
 @dataclass
@@ -48,19 +55,22 @@ class SweepTransform:
 ######### math functions
 @dataclass
 class RegularMathFunction:
-    variables: List[Identifier]
+    id: str
+    variables: List[str]
     expression: Any
 
 
 @dataclass
 class ParametricMathFunction:
-    variables: List[Identifier]
+    id: str
+    variables: List[str]
     expressions: Any
 
 
 @dataclass
 class PolarMathFunction:
-    variables: List[Identifier]
+    id: str
+    variables: List[str]
     expression: Any
 
 
@@ -70,7 +80,7 @@ class PolarMathFunction:
 ####### animation primitives
 @dataclass
 class Animation:
-    instance: Identifier | MathFunction | VLines | TextAnimation | SweepDotTransform
+    instance: Animatable
     transforms: List[Transform]
 
 
@@ -93,13 +103,13 @@ class Definition:
 
 @dataclass
 class AxisBlock:
-    name: Identifier
+    id: str
     animations: List[Animation]
 
 
 @dataclass
 class PolarBlock:
-    name: Identifier
+    id: str
     animations: List[Animation]
 
 
@@ -110,7 +120,8 @@ class Program:
 
 @dataclass
 class VLines:
-    variable: Identifier
+    id: str
+    variable: str
     num_lines: float
 
 
@@ -119,5 +130,6 @@ class VLines:
 ########### union type definitions
 MathFunction = RegularMathFunction | ParametricMathFunction | PolarMathFunction
 MathTransform = SweepTransform
-Transform = MathTransform | SweepDotTransform
+Transform = MathTransform | SweepDot
+Animatable = Identifier | MathFunction | VLines | TextAnimation | SweepDot
 ########### end union type definitions

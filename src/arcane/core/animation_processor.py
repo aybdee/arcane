@@ -9,8 +9,10 @@ from arcane.core.constructs import (
     RelativePosition,
     SweepTransform,
     TextAnimation,
-    VLines as VLinesToken,
+    SweepDot as SweepDotConstruct,
+    VLines as VLinesConstruct,
 )
+
 from arcane.core.interpreter_types import (
     InterpreterError,
     InterpreterMessage,
@@ -22,9 +24,10 @@ from arcane.graphics.constructor import (
     render_polar_math_function,
     render_regular_math_function,
     render_relative_text,
+    render_sweep_dot,
     render_vlines_to_function,
 )
-from arcane.graphics.objects import ArcaneText, Plot, VLines
+from arcane.graphics.objects import ArcaneText, Plot, SweepDot, VLines
 
 from arcane.core.store import Store
 from arcane.utils import gen_id
@@ -98,15 +101,22 @@ class AnimationProcessor:
                 instance.value,
             )
 
-        elif isinstance(instance, VLinesToken):
+        elif isinstance(instance, VLinesConstruct):
             assert isinstance(transforms[0], SweepTransform)
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
                 VLines(
                     id=id,
-                    variable=instance.variable.value,
+                    variable=instance.variable,
                     x_range=[transforms[0].sweep_from, transforms[0].sweep_to],
                     num_lines=instance.num_lines,
                     render=render_vlines_to_function,
+                )
+            )
+
+        elif isinstance(instance, SweepDotConstruct):
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
+                SweepDot(
+                    id=instance.id, variable=instance.variable, render=render_sweep_dot
                 )
             )
 

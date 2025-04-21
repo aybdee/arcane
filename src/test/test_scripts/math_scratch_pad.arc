@@ -1,18 +1,18 @@
 Define polly as polar(t) = 2 * sin(5 * t)
-on polar pollinus { 
+on polar one { 
   @polly from 0 to 2 * PI
 }
 
-on axis pollinus { 
+on axis two { 
   @f(x) = x ^ 2 from -2 to 2 and sweep dot across
 }
 
 
-on axis pollinus { 
+on axis three { 
   @f(x) = x ^ 2 from -2 to 2 and sweep dot across
 }
 
-on axis pollini { 
+on axis four { 
   @f(x) = 2 * (x ^ 3) from -2 to 2 and sweep dot across
 }
 

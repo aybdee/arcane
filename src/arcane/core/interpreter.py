@@ -14,6 +14,7 @@ from arcane.graphics.objects import (
     PlotContainer,
     Plot,
     SceneBuilder,
+    SweepDot,
     VLines,
 )
 from arcane.graphics.scene import construct_scene
@@ -108,22 +109,31 @@ class ArcaneInterpreter:
         elif isinstance(block, PolarBlock):
             container_type = "PolarPlane"
 
-        self.scene_builder.add_object(
-            id=block.name.value, value=PlotContainer(container_type)
-        )
+        self.scene_builder.add_object(id=block.id, value=PlotContainer(container_type))
 
         for animation in animations:
             if isinstance(animation, Plot):
                 self.scene_builder.add_object(
                     id=animation.id,
                     value=animation,
-                    dependencies=[block.name.value],
+                    dependencies=[block.id],
                 )
             elif isinstance(animation, VLines):
                 self.scene_builder.add_object(
                     id=animation.id,
                     value=animation,
                     dependencies=[animation.variable],
+                )
+            # TODO:(remove repetition between here and global axis)
+            elif isinstance(animation, ArcaneText):
+                self.scene_builder.add_object(
+                    id=animation.id,
+                    value=animation,
+                    dependencies=[animation.relative_to],
+                )
+            elif isinstance(animation, SweepDot):
+                self.scene_builder.add_object(
+                    id=animation.id, value=animation, dependencies=[animation.variable]
                 )
 
     def run(self) -> None:
@@ -159,6 +169,14 @@ class ArcaneInterpreter:
                         value=result.data,
                         dependencies=[result.data.variable],
                     )
+
+                elif isinstance(result.data, SweepDot):
+                    self.scene_builder.add_object(
+                        id=result.data.id,
+                        value=result.data,
+                        dependencies=[result.data.variable],
+                    )
+
                 elif isinstance(result.data, ArcaneText):
                     self.scene_builder.add_object(
                         id=result.data.id,

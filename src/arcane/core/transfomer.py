@@ -2,23 +2,24 @@ from lark import Transformer
 from manim.constants import PI
 from sympy import sympify
 from sympy.core.numbers import E, Float
+from arcane.utils import gen_id
 
 
 from arcane.core.constructs import (
+    Animatable,
     Animation,
     Definition,
     Identifier,
     MathFunction,
     ArcaneType,
-    MathTransform,
     ParametricMathFunction,
     PolarBlock,
     PolarMathFunction,
+    SweepDot,
     Program,
     RegularMathFunction,
     RelativePosition,
     RelativePositionPlacement,
-    SweepDotTransform,
     SweepTransform,
     AxisBlock,
     TextAnimation,
@@ -35,15 +36,21 @@ def filter_none(func):
     return wrapper
 
 
+def flatten(lst):
+    for item in lst:
+        if isinstance(item, list):
+            yield from flatten(item)
+        else:
+            yield item
+
+
 def safe_get(lst, index, default=None):
     return lst[index] if 0 <= index < len(lst) else default
 
 
 class ArcaneTransfomer(Transformer):
     def program(self, items):
-        statements = []
-        for item in items:
-            statements.append(item)
+        statements = list(flatten(items))
         return Program(statements)
 
     def definition(self, items):
@@ -55,6 +62,9 @@ class ArcaneTransfomer(Transformer):
                 name = item
             elif isinstance(item, MathFunction):
                 arctype = ArcaneType.MATHFUNCTION
+                assert name is not None
+                # replace generated ID with variable name
+                item.id = name.value
                 value = item
 
             elif isinstance(item, Float):
@@ -70,13 +80,30 @@ class ArcaneTransfomer(Transformer):
 
     def animate_declaration(self, items):
         items = list(filter(lambda x: x != None, items))
-        return Animation(instance=items[0], transforms=items[1:])
+        animations = []
+        instance_index = 0
+        for index, item in enumerate(items):
+            if isinstance(item, Animatable) and index != 0:
+                animations.append(
+                    (items[instance_index], items[instance_index + 1 : index])
+                )
+                instance_index = index
+
+            if index == len(items) - 1:
+                animations.append((items[instance_index], items[instance_index + 1 :]))
+
+            if isinstance(item, SweepDot) and not item.variable:
+                item.variable = animations[0][0].id
+
+        return list(
+            map(lambda x: Animation(instance=x[0], transforms=x[1]), animations)
+        )
 
     def sweep_dot(self, _):
-        return SweepDotTransform()
+        return SweepDot(id=gen_id(), variable="")
 
     def vertical_line_declaration(self, items):
-        return VLines(variable=items[1], num_lines=items[0])
+        return VLines(gen_id(), variable=items[1], num_lines=items[0])
 
     def write_declaration(self, items):
         if len(items) == 1:
@@ -100,7 +127,7 @@ class ArcaneTransfomer(Transformer):
             else:
                 animations.append(item)
         assert identifier is not None
-        return PolarBlock(name=identifier, animations=animations)
+        return PolarBlock(id=identifier.id, animations=list(flatten(animations)))
 
     @filter_none
     def axis_declaration(self, items):
@@ -112,37 +139,37 @@ class ArcaneTransfomer(Transformer):
             else:
                 animations.append(item)
         assert identifier is not None
-        return AxisBlock(name=identifier, animations=animations)
+        return AxisBlock(id=identifier.id, animations=list(flatten(animations)))
 
     def regular_math_function(self, items):
         variables = []
         expression = ""
         for item in items:
             if isinstance(item, Identifier):
-                variables.append(item)
+                variables.append(item.value)
             else:
                 expression = sympify(item)
-        return RegularMathFunction(variables, expression)
+        return RegularMathFunction(gen_id(), variables, expression)
 
     def parametric_math_function(self, items):
         variables = []
         expressions = []
         for item in items:
             if isinstance(item, Identifier):
-                variables.append(item)
+                variables.append(item.value)
             else:
                 expressions.append(sympify(item))
-        return ParametricMathFunction(variables, expressions)
+        return ParametricMathFunction(gen_id(), variables, expressions)
 
     def polar_math_function(self, items):
         variables = []
         expression = ""
         for item in items:
             if isinstance(item, Identifier):
-                variables.append(item)
+                variables.append(item.value)
             else:
                 expression = sympify(item)
-        return PolarMathFunction(variables, expression)
+        return PolarMathFunction(gen_id(), variables, expression)
 
     def sweep(self, items):
         return SweepTransform(items[0], items[1])

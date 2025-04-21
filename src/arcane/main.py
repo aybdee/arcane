@@ -1,3 +1,4 @@
+from pprint import pprint
 from lark import Transformer
 from sys import argv
 from arcane.core.constructs import Program
