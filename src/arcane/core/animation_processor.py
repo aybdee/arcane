@@ -125,10 +125,12 @@ class AnimationProcessor:
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
                 ArcaneText(
                     id=id,
-                    relative_to=instance.position.variable.value,
+                    is_latex=instance.is_latex,
+                    relative_to=instance.position.variable,
                     relative_placement=instance.position.placement,
                     text=instance.value,
                     render=render_relative_text,
+                    options=instance.options,
                 )
             )
 

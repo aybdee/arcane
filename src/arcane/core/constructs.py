@@ -20,7 +20,7 @@ class RelativePositionPlacement(Enum):
 
 @dataclass
 class RelativePosition:
-    variable: Identifier
+    variable: str
     placement: RelativePositionPlacement
 
 
@@ -88,6 +88,8 @@ class Animation:
 class TextAnimation:
     value: str
     position: Optional[RelativePosition]
+    options: Optional[Dict]
+    is_latex: bool = False
 
 
 ####### end animation primitives

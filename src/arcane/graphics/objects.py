@@ -1,9 +1,8 @@
 from __future__ import annotations
-import uuid
 from dataclasses import dataclass
-from typing import Callable, Generic, Literal, Tuple, Protocol, Any, Optional, TypeVar
+from typing import Callable, Literal, Tuple, Protocol, Any, Optional, TypeVar
 from abc import ABC, abstractmethod
-from arcane.core.constructs import RelativePosition, RelativePositionPlacement
+from arcane.core.constructs import RelativePositionPlacement
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from collections import OrderedDict
 from pprint import pprint
@@ -47,20 +46,15 @@ class VLines(VLinesConstruct):
     render: Callable
 
 
-# @dataclass
-# class ArcaneDot:
-#     value: Dot
-#     tracker: ValueTracker
-#     end: float
-
-
 @dataclass
 class ArcaneText:
     id: str
     text: str
+    is_latex: bool
     relative_to: str
     relative_placement: RelativePositionPlacement
     render: Callable
+    options: Optional[Dict]
 
 
 class PlotContainer:
@@ -210,8 +204,10 @@ class SceneBuilder:
             assert parent_object.mobject is not None
             text_mobject = node.value.render(
                 node.value.text,
+                node.value.is_latex,
                 parent_object.mobject,
                 node.value.relative_placement,
+                node.value.options,
             )
 
             self.animations.append(
@@ -308,28 +304,10 @@ class SceneBuilder:
                 self.resolve_dependency(dependant_id)
             descendants.extend(self.collect_all_descendant_mobjects(id))
 
-            # plots = [
-            #     dependant_id
-            #     for dependant_id in dependants.keys()
-            #     if self.dependency_tree[dependant_id].mobject is not None
-            #     and isinstance(self.dependency_tree[dependant_id].value, Plot)
-            # ]
-
-            # if not plots_and_aux:
-            #     plots = []
-            #     auxillary = []
-            # else:
-            #     plots, auxillary = map(list, zip(*plots_and_aux))
-            #
-            # auxillary_mobjects: List[Any] = []
-            # for aux in auxillary:
-            #     if isinstance(aux, ArcaneDot):
-            #         auxillary_mobjects.append(aux.value)
-
             plots_group = VGroup(
                 node.mobject,
                 *descendants,
-            )  # Group axes and plots
+            )
 
             self.animations.append(
                 AnimationItem(
@@ -338,32 +316,6 @@ class SceneBuilder:
                     animate=False,
                 )
             )
-
-            # for plot in plots:
-            #     self.animations.append(
-            #         AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
-            #     )
-
-            # for aux_group in auxillary:
-            #     for construct in aux_group:
-            #         if isinstance(construct, ArcaneDot):
-            #             self.animations.append(
-            #                 AnimationItem(
-            #                     animation=construct.value,
-            #                     phase=AnimationPhase.SECONDARY,
-            #                     animate=False,
-            #                 )
-            #             )
-            #
-            #             self.animations.append(
-            #                 AnimationItem(
-            #                     animation=construct.tracker.animate.set_value(
-            #                         construct.end
-            #                     ),
-            #                     phase=AnimationPhase.SECONDARY,
-            #                     config={"rate_func": linear},
-            #                 )
-            #             )
 
             self.groups.append(plots_group)
 

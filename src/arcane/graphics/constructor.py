@@ -20,9 +20,27 @@ from enum import Enum
 
 
 def render_relative_text(
-    text: str, relative_mobject: Mobject, relative_placement: RelativePositionPlacement
+    text: str,
+    is_latex: bool,
+    relative_mobject: Mobject,
+    relative_placement: RelativePositionPlacement,
+    options: Dict,
 ):
-    text_mobject = Text(text)
+
+    if is_latex:
+        text_mobject = Tex(
+            f"${text}$",
+            font_size=(
+                options.get("size") if options.get("size") else DEFAULT_FONT_SIZE
+            ),  # type:ignore
+        )
+    else:
+        text_mobject = Text(
+            text,
+            font_size=(
+                options.get("size") if options.get("size") else DEFAULT_FONT_SIZE
+            ),  # type:ignore
+        )
     if relative_placement == RelativePositionPlacement.ABOVE:
         text_mobject = text_mobject.next_to(relative_mobject, UP)
 
@@ -119,8 +137,6 @@ def render_polar_math_function(
         graph = plane.plot_polar_graph(
             math_function, [x_start, x_end], color=get_random_color()
         )
-
-        # Create animations
         return graph
 
     return Plot(

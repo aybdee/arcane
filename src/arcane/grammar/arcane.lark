@@ -10,7 +10,14 @@ animate_declaration: "@" (((IDENT | ((IDENT | math_function | show_declaration) 
 show_declaration: "show" vertical_line_declaration
 
 vertical_line_declaration: NUMBER "vertical lines on" IDENT
-write_declaration: "write" STRING RELATIVE_POSITION IDENT
+write_declaration: "write" write_value RELATIVE_POSITION IDENT ["with" font_option ("," font_option)*]
+
+write_value: STRING | latex
+latex: "latex" STRING
+
+font_option: FONT_OPTION_KEY font_option_value
+FONT_OPTION_KEY: "size" 
+font_option_value: NUMBER 
 
 
 sweep_dot: "sweep dot across"

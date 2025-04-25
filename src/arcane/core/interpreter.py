@@ -103,89 +103,51 @@ class ArcaneInterpreter:
             (block, processed_animations)
         )
 
-    def _add_plot_block_to_builder(self, block: AxisBlock | PolarBlock, animations):
-        if isinstance(block, AxisBlock):
-            container_type = "Axis"
-        elif isinstance(block, PolarBlock):
-            container_type = "PolarPlane"
+    def _add_object(self, obj, *, default_dep=None):
+        """Helper to add an object with optional dependency logic"""
+        dep = []
+        if isinstance(obj, Plot):
+            dep = [default_dep] if default_dep else []
+        elif isinstance(obj, VLines):
+            dep = [obj.variable]
+        elif isinstance(obj, SweepDot):
+            dep = [obj.variable]
+        elif isinstance(obj, ArcaneText):
+            dep = [obj.relative_to]
 
+        self.scene_builder.add_object(id=obj.id, value=obj, dependencies=dep)
+
+    def _add_plot_block_to_builder(self, block: AxisBlock | PolarBlock, animations):
+        container_type = "Axis" if isinstance(block, AxisBlock) else "PolarPlane"
         self.scene_builder.add_object(id=block.id, value=PlotContainer(container_type))
 
         for animation in animations:
-            if isinstance(animation, Plot):
-                self.scene_builder.add_object(
-                    id=animation.id,
-                    value=animation,
-                    dependencies=[block.id],
-                )
-            elif isinstance(animation, VLines):
-                self.scene_builder.add_object(
-                    id=animation.id,
-                    value=animation,
-                    dependencies=[animation.variable],
-                )
-            # TODO:(remove repetition between here and global axis)
-            elif isinstance(animation, ArcaneText):
-                self.scene_builder.add_object(
-                    id=animation.id,
-                    value=animation,
-                    dependencies=[animation.relative_to],
-                )
-            elif isinstance(animation, SweepDot):
-                self.scene_builder.add_object(
-                    id=animation.id, value=animation, dependencies=[animation.variable]
-                )
+            self._add_object(animation, default_dep=block.id)
 
     def run(self) -> None:
         """Run the entire program"""
-
         for _ in range(len(self.program.statements)):
             try:
                 result = self.execute_next()
-                if isinstance(result.data, Plot):
-                    container_type = result.data.container_type
-                    if container_type in ("Axis", "PolarPlane"):
-                        global_id = (
-                            "global_axis"
-                            if container_type == "Axis"
-                            else "global_polar"
-                        )
+                data = result.data
 
-                        if not self.scene_builder.get(global_id):
-                            self.scene_builder.add_object(
-                                id=global_id,
-                                value=PlotContainer(container_type),
-                            )
-
+                if isinstance(data, Plot):
+                    container_type = data.container_type
+                    global_id = (
+                        "global_axis" if container_type == "Axis" else "global_polar"
+                    )
+                    if not self.scene_builder.get(global_id):
                         self.scene_builder.add_object(
-                            id=result.data.id,
-                            value=result.data,
-                            dependencies=[global_id],
+                            id=global_id,
+                            value=PlotContainer(container_type),
                         )
+                    self._add_object(data, default_dep=global_id)
 
-                elif isinstance(result.data, VLines):
-                    self.scene_builder.add_object(
-                        id=result.data.id,
-                        value=result.data,
-                        dependencies=[result.data.variable],
-                    )
+                elif isinstance(data, (VLines, SweepDot, ArcaneText)):
+                    self._add_object(data)
 
-                elif isinstance(result.data, SweepDot):
-                    self.scene_builder.add_object(
-                        id=result.data.id,
-                        value=result.data,
-                        dependencies=[result.data.variable],
-                    )
-
-                elif isinstance(result.data, ArcaneText):
-                    self.scene_builder.add_object(
-                        id=result.data.id,
-                        value=result.data,
-                        dependencies=[result.data.relative_to],
-                    )
-
-                elif isinstance(result.data, Tuple) and len(result.data) == 2:
-                    block, animations = result.data
+                elif isinstance(data, Tuple) and len(data) == 2:
+                    block, animations = data
                     self._add_plot_block_to_builder(block, animations)
 
             except InterpreterError as e:

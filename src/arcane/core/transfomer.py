@@ -1,3 +1,4 @@
+from typing import Dict
 from lark import Transformer
 from manim.constants import PI
 from sympy import sympify
@@ -103,16 +104,30 @@ class ArcaneTransfomer(Transformer):
         return SweepDot(id=gen_id(), variable="")
 
     def vertical_line_declaration(self, items):
-        return VLines(gen_id(), variable=items[1], num_lines=items[0])
+        return VLines(gen_id(), variable=items[1].id, num_lines=items[0])
 
     def write_declaration(self, items):
-        if len(items) == 1:
-            return TextAnimation(value=items[0], position=None)
-        elif len(items) == 3:
-            return TextAnimation(
-                value=items[0],
-                position=RelativePosition(variable=items[2], placement=items[1]),
-            )
+        # TODO:(dont use positions to extract items)
+        position = list(
+            filter(lambda x: isinstance(x, RelativePositionPlacement), items)
+        )
+        is_latex = items[0].startswith("latex")
+        return TextAnimation(
+            value=items[0] if not is_latex else items[0].replace("latex", ""),
+            position=(
+                RelativePosition(variable=items[2].id, placement=position[0])
+                if position
+                else None
+            ),
+            options=items[-1] if isinstance(items[-1], Dict) else {},
+            is_latex=is_latex,
+        )
+
+    def font_option(self, items):
+        options = {}
+        for i in range(0, len(items), 2):
+            options.update({items[i]: items[i + 1]})
+        return options
 
     def show_declaration(self, items):
         return items[0]
@@ -277,6 +292,18 @@ class ArcaneTransfomer(Transformer):
 
     def constant(self, items):
         return items[0]
+
+    def font_option_value(self, items):
+        return items[0]
+
+    def write_value(self, items):
+        return items[0]
+
+    def latex(self, items):
+        return "latex" + items[0]
+
+    def FONT_OPTION_KEY(self, items):
+        return str(items)
 
     def STRING(self, items):
         return str(items)[1:-1]
