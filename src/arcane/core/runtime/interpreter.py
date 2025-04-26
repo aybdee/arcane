@@ -2,7 +2,28 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 from enum import Enum
 from pprint import pprint
 
-from arcane.core.constructs import (
+
+from arcane.core.models.constructs import (
+    Animation,
+    Identifier,
+    ParametricMathFunction,
+    PolarMathFunction,
+    RegularMathFunction,
+    SweepTransform,
+    ArcaneText,
+    SweepDot,
+    VLines,
+)
+
+
+from arcane.graphics.builder import SceneBuilder
+from arcane.graphics.renderers.graph import (
+    render_parametric_math_function,
+    render_polar_math_function,
+    render_regular_math_function,
+)
+
+from arcane.core.models.constructs import (
     Animation,
     AxisBlock,
     Definition,
@@ -10,23 +31,19 @@ from arcane.core.constructs import (
     Program,
 )
 from arcane.graphics.objects import (
-    ArcaneText,
     PlotContainer,
     Plot,
-    SceneBuilder,
-    SweepDot,
-    VLines,
 )
+
 from arcane.graphics.scene import construct_scene
 
-from arcane.core.interpreter_types import (
+from arcane.core.runtime.types import (
     InterpreterMessage,
     InterpreterMessageType,
     InterpreterError,
     InterpreterErrorCode,
 )
-from arcane.core.store import Store
-from arcane.core.animation_processor import AnimationProcessor
+from arcane.core.runtime.store import Store
 from arcane.utils import gen_id
 
 
@@ -42,12 +59,24 @@ class ArcaneInterpreter:
         self.program = program
         self.store = Store()
         self.scene_builder = SceneBuilder()
-        self.animation_processor = AnimationProcessor(self.store)
         self.instruction_pointer = 0
 
         # Results tracking
         self.animation_blocks: List[PlotContainer] = []
         self.global_container: Optional[Dict] = None
+
+    def process_expression(self, expression: Any) -> Any:
+        """Evaluates all the terms inside an expression that have stored identifiers"""
+        variables = list(expression.free_symbols)
+        evaluated_expr = expression
+
+        for variable in variables:
+            var_name = str(variable)
+            stored_value = self.store.get(var_name)
+            if isinstance(stored_value, (int, float)):
+                evaluated_expr = evaluated_expr.subs({variable: stored_value})
+
+        return evaluated_expr
 
     def execute_next(self) -> InterpreterMessage:
         """Execute the next statement in the program"""
@@ -64,7 +93,7 @@ class ArcaneInterpreter:
                 self.store.add(current_statement.name.value, current_statement.value)
                 return InterpreterMessage(InterpreterMessageType.SUCCESS)
             elif isinstance(current_statement, Animation):
-                return self.animation_processor.process_animation(current_statement)
+                return self.process_animation(current_statement)
             elif isinstance(current_statement, AxisBlock) or isinstance(
                 current_statement, PolarBlock
             ):
@@ -81,6 +110,50 @@ class ArcaneInterpreter:
             raise e
             # raise InterpreterError(InterpreterErrorCode.UNKNOWN, details=str(e)) #TODO:(uncomment)
 
+    def process_animation(
+        self, animation: Animation, id: str = ""
+    ) -> InterpreterMessage:
+        """Process an instance animation"""
+        instance = animation.instance
+        transforms = animation.transforms
+        id = id if id else gen_id()
+
+        if isinstance(instance, RegularMathFunction):
+            instance.expression = self.process_expression(instance.expression)
+            plot = render_regular_math_function(id, instance, transforms)
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
+
+        if isinstance(instance, PolarMathFunction):
+            instance.expression = self.process_expression(instance.expression)
+            plot = render_polar_math_function(id, instance, transforms)
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
+
+        elif isinstance(instance, ParametricMathFunction):
+            instance.expressions = list(
+                map(self.process_expression, instance.expressions)
+            )
+            plot = render_parametric_math_function(id, instance, transforms)
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
+
+        elif isinstance(instance, Identifier):
+            # Resolve the identifier and process the result
+            resolved_value = self.store.get_or_throw(instance.value)
+            return self.process_animation(
+                Animation(instance=resolved_value, transforms=transforms),
+                instance.value,
+            )
+
+        elif isinstance(instance, (VLines, SweepDot, ArcaneText)):
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
+                instance
+            )
+
+        else:
+            raise InterpreterError(
+                InterpreterErrorCode.UNSUPPORTED_STATEMENT,
+                statement_type=type(instance).__name__,
+            )
+
     def _handle_plot_block(self, block: AxisBlock | PolarBlock) -> InterpreterMessage:
         """Handle an AxisBlock or PolarBlock statement"""
         processed_animations = []
@@ -92,7 +165,7 @@ class ArcaneInterpreter:
             expected_container = "PolarPlane"
 
         for animation in block.animations:
-            processed_animation = self.animation_processor.process_animation(animation)
+            processed_animation = self.process_animation(animation)
             if processed_animation.data:
                 if isinstance(processed_animation.data, Plot):
                     if processed_animation.data.container_type != expected_container:
@@ -113,7 +186,8 @@ class ArcaneInterpreter:
         elif isinstance(obj, SweepDot):
             dep = [obj.variable]
         elif isinstance(obj, ArcaneText):
-            dep = [obj.relative_to]
+            if obj.position:
+                dep = [obj.position.variable]
 
         self.scene_builder.add_object(id=obj.id, value=obj, dependencies=dep)
 

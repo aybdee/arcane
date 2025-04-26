@@ -1,26 +1,10 @@
 from manim import *
-import sympy as sp
 import random
 
 
 def get_random_color():
     colors = [GREEN, YELLOW, WHITE, RED, BLUE, ORANGE, PURPLE, TEAL]
     return random.choice(colors)
-
-
-def avoid_zero(num):
-    if num == 0:
-        return 0.001
-    else:
-        return num
-
-
-def compute_function_range(func, value_range, num_samples=100):
-    x_values = np.linspace(value_range[0], value_range[1], num_samples)
-    vfunc = np.vectorize(func)
-    y_values = vfunc(x_values)
-    y_min, y_max = np.min(y_values), np.max(y_values)
-    return [y_min, y_max]
 
 
 def clip_plot(csystem, plotfun, x_range=[-5, 5, 0.01], **kwargs):
@@ -34,14 +18,6 @@ def clip_plot(csystem, plotfun, x_range=[-5, 5, 0.01], **kwargs):
             snip.set_opacity(0)
         grp += snip
     return grp
-
-
-def layout_horizontal(objects: List[Mobject]):
-    if objects:
-        current_object = objects[0]
-        for object in objects[1:]:
-            object.next_to(current_object)
-            current_object = object
 
 
 CoordinateSystem.clip_plot = clip_plot  # type: ignore

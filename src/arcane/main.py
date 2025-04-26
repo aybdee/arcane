@@ -1,11 +1,11 @@
 from pprint import pprint
 from lark import Transformer
 from sys import argv
-from arcane.core.constructs import Program
-from arcane.core.interpreter import ArcaneInterpreter, InterpreterMessage
-from arcane.core.parser import parse
+from arcane.core.models.constructs import Program
+from arcane.core.runtime.interpreter import ArcaneInterpreter, InterpreterMessage
+from arcane.core.parsing.parser import parse
 from typing import Tuple
-from arcane.core.transfomer import ArcaneTransfomer
+from arcane.core.parsing.transfomer import ArcaneTransfomer
 
 if len(argv) < 2:
     print("error: arc file not supplied")

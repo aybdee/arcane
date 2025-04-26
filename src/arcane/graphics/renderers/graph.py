@@ -1,71 +1,33 @@
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Tuple
 from manim import *
-from arcane.core.constructs import (
-    MathFunction,
+from arcane.core.models.constructs import (
     ParametricMathFunction,
     PolarMathFunction,
     RegularMathFunction,
-    RelativePositionPlacement,
-    SweepDot,
     SweepTransform,
+    VLines,
+    Transform as ArcaneTransform,
 )
-from arcane.core.constructs import Transform as ArcaneTransform
 import arcane.graphics.config
 import arcane.graphics.utils
-from arcane.graphics.utils import avoid_zero, get_random_color, compute_function_range
+from arcane.graphics.utils.manim import get_random_color
+from arcane.graphics.utils.math import avoid_zero, compute_function_range
 from arcane.graphics.objects import Plot
 import numpy as np
 from enum import Enum
 
 
-def render_relative_text(
-    text: str,
-    is_latex: bool,
-    relative_mobject: Mobject,
-    relative_placement: RelativePositionPlacement,
-    options: Dict,
-):
-
-    if is_latex:
-        text_mobject = Tex(
-            f"${text}$",
-            font_size=(
-                options.get("size") if options.get("size") else DEFAULT_FONT_SIZE
-            ),  # type:ignore
-        )
-    else:
-        text_mobject = Text(
-            text,
-            font_size=(
-                options.get("size") if options.get("size") else DEFAULT_FONT_SIZE
-            ),  # type:ignore
-        )
-    if relative_placement == RelativePositionPlacement.ABOVE:
-        text_mobject = text_mobject.next_to(relative_mobject, UP)
-
-    elif relative_placement == RelativePositionPlacement.BELOW:
-        text_mobject = text_mobject.next_to(relative_mobject, DOWN)
-
-    elif relative_placement == RelativePositionPlacement.LEFT:
-        text_mobject = text_mobject.next_to(relative_mobject, LEFT)
-
-    elif relative_placement == RelativePositionPlacement.RIGHT:
-        text_mobject = text_mobject.next_to(relative_mobject, RIGHT)
-
-    return text_mobject
-
-
 def render_vlines_to_function(
     axes: Axes,
     math_function: ParametricFunction,
-    x_range: List[float],
-    num_lines: float,
+    vlines: VLines,
+    x_range: Tuple[float, float],
 ):
     lines = axes.get_vertical_lines_to_graph(
         math_function,
         x_range=x_range,
-        num_lines=int(num_lines),
+        num_lines=int(vlines.num_lines),
         color=get_random_color(),
     )
     return lines
@@ -190,7 +152,7 @@ def render_regular_math_function(
     )
 
 
-def render_sweep_dot(axes: Axes, math_function: Callable, range: List[float]):
+def render_sweep_dot(axes: Axes, math_function: Callable, range: Tuple[float, float]):
 
     t = ValueTracker(int(range[0]))
 

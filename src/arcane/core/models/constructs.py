@@ -85,10 +85,11 @@ class Animation:
 
 
 @dataclass
-class TextAnimation:
+class ArcaneText:
+    id: str
     value: str
     position: Optional[RelativePosition]
-    options: Optional[Dict]
+    options: Dict = field(default_factory=dict)
     is_latex: bool = False
 
 
@@ -133,5 +134,5 @@ class VLines:
 MathFunction = RegularMathFunction | ParametricMathFunction | PolarMathFunction
 MathTransform = SweepTransform
 Transform = MathTransform | SweepDot
-Animatable = Identifier | MathFunction | VLines | TextAnimation | SweepDot
+Animatable = Identifier | MathFunction | VLines | ArcaneText | SweepDot
 ########### end union type definitions

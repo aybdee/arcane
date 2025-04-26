@@ -6,7 +6,7 @@ from sympy.core.numbers import E, Float
 from arcane.utils import gen_id
 
 
-from arcane.core.constructs import (
+from arcane.core.models.constructs import (
     Animatable,
     Animation,
     Definition,
@@ -23,7 +23,7 @@ from arcane.core.constructs import (
     RelativePositionPlacement,
     SweepTransform,
     AxisBlock,
-    TextAnimation,
+    ArcaneText,
     VLines,
 )
 
@@ -112,7 +112,8 @@ class ArcaneTransfomer(Transformer):
             filter(lambda x: isinstance(x, RelativePositionPlacement), items)
         )
         is_latex = items[0].startswith("latex")
-        return TextAnimation(
+        return ArcaneText(
+            id=gen_id(),
             value=items[0] if not is_latex else items[0].replace("latex", ""),
             position=(
                 RelativePosition(variable=items[2].id, placement=position[0])

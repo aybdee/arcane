@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional
-from arcane.core.interpreter_types import (
+from arcane.core.runtime.types import (
     InterpreterError,
     InterpreterErrorCode,
 )

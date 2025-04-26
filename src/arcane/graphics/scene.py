@@ -1,10 +1,11 @@
+import arcane.graphics.config
 from dataclasses import dataclass
 from manim import *
 from typing import List, Callable
 from enum import Enum, auto
 from arcane.graphics.animation import AnimationItem, AnimationPhase
+from arcane.graphics.builder import SceneBuilder
 from arcane.graphics.layout import layout_horizontal, scale_to_fit_screen
-from arcane.graphics.objects import Frame, SceneBuilder
 
 
 def construct_scene(scene_builder: SceneBuilder):
