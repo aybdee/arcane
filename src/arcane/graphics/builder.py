@@ -1,8 +1,16 @@
 from dataclasses import dataclass
 from typing import Any, List, Optional, OrderedDict
-from arcane.core.models.constructs import SweepDot, VLines, ArcaneText
+from arcane.core.models.constructs import (
+    ArcanePoint,
+    SweepDot,
+    SweepObjects,
+    VLines,
+    ArcaneText,
+    ArcaneLine,
+)
 from manim import *
 from arcane.graphics.animation import AnimationItem, AnimationPhase
+from arcane.graphics.renderers.geometry import render_line, render_point
 from arcane.graphics.renderers.graph import (
     render_sweep_dot,
     render_vlines_to_function,
@@ -10,9 +18,12 @@ from arcane.graphics.renderers.graph import (
 from arcane.graphics.renderers.misc import render_text
 from arcane.graphics.objects import Plot, PlotContainer
 from pprint import pprint
+import arcane.graphics.config
 
 
-SceneObject = Plot | PlotContainer | VLines | ArcaneText | SweepDot
+SceneObject = (
+    Plot | PlotContainer | VLines | ArcaneText | SweepDot | ArcaneLine | ArcanePoint
+)
 
 
 @dataclass
@@ -98,6 +109,56 @@ class SceneBuilder:
             self.animations.append(
                 AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
             )
+
+        elif isinstance(node.value, ArcanePoint):
+            mobject = render_point(node.value)
+            node.mobject = mobject
+            self.dependency_tree[id].mobject = mobject
+            for dependant_id in dependants.keys():
+                try:
+                    # TODO:(figure out better way to do this)
+                    self.resolve_dependency(dependant_id)
+                except Exception as e:
+                    print("we're running into an error")
+                    pass
+
+            self.animations.append(
+                AnimationItem(
+                    animation=Create(mobject),
+                    phase=AnimationPhase.PRIMARY,
+                )
+            )
+
+        elif isinstance(node.value, ArcaneLine):
+            print("trying this")
+            if isinstance(node.value.definition, SweepObjects):
+                from_node = self.dependency_tree[
+                    node.value.definition.sweep_from
+                ]  # type:ignore
+                to_node = self.dependency_tree[
+                    node.value.definition.sweep_to
+                ]  # type:ignore
+
+                assert from_node.mobject is not None
+
+                print("reached here")
+                assert to_node.mobject is not None
+
+                self.animations.append(
+                    AnimationItem(
+                        animation=Create(
+                            render_line(node.value, from_node.mobject, to_node.mobject)
+                        ),
+                        phase=AnimationPhase.PRIMARY,
+                    )
+                )
+            else:
+                self.animations.append(
+                    AnimationItem(
+                        animation=Create(render_line(node.value)),
+                        phase=AnimationPhase.PRIMARY,
+                    )
+                )
 
         elif isinstance(node.value, ArcaneText):
             parent_object_id = node.dependencies[0]
@@ -218,10 +279,11 @@ class SceneBuilder:
             self.groups.append(plots_group)
 
     def build(self) -> None:
-        pprint(self.dependency_tree)
         no_deps = OrderedDict(
             (k, v) for k, v in self.dependency_tree.items() if not v.dependencies
         )
 
         for dependency_id in no_deps.keys():
             self.resolve_dependency(dependency_id)
+
+        pprint(self.dependency_tree)

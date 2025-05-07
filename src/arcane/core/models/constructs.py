@@ -1,14 +1,11 @@
 from __future__ import annotations
 from lark import ParseTree
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from enum import Enum
 
 
 ###### Primitives
-class ArcaneType(Enum):
-    MATHFUNCTION = "MATH"
-    NUMBER = "NUMBER"
 
 
 class RelativePositionPlacement(Enum):
@@ -47,6 +44,25 @@ class SweepDot:
 class SweepTransform:
     sweep_from: float
     sweep_to: float
+
+
+@dataclass
+class SweepCoordinates:
+    sweep_from: Tuple[float, float]
+    sweep_to: Tuple[float, float]
+
+
+@dataclass
+class SweepObjects:
+    sweep_from: str
+    sweep_to: str
+
+
+@dataclass
+class CoordinateAngleLength:
+    sweep_from: Tuple[float, float]
+    angle: float
+    length: float
 
 
 ##### end Transforms
@@ -93,15 +109,26 @@ class ArcaneText:
     is_latex: bool = False
 
 
+@dataclass
+class ArcanePoint:
+    id: str
+    position: Tuple[float, float]
+
+
+@dataclass
+class ArcaneLine:
+    id: str
+    definition: SweepCoordinates | CoordinateAngleLength
+
+
 ####### end animation primitives
 
 
 ######### blocks
 @dataclass
 class Definition:
-    type: ArcaneType
     name: Identifier
-    value: MathFunction | float
+    value: MathFunction | ArcaneLine | ArcanePoint | float
 
 
 @dataclass

@@ -1,12 +1,18 @@
 start : program
 program : statement* 
 statement : definition | animate_declaration | axis_declaration | polar_declaration NEWLINE
-definition : "Define" IDENT "as" expression
-expression : math_function | algebraic_expression
+definition : "Define" IDENT "as" (expression | line_declaration | point_declaration)
+expression : math_function | algebraic_expression 
+
+line_declaration: "line" (sweep_coordinates | coordinate_angle_length | ident_sweep)
+point_declaration: "point at"  "("NUMBER","NUMBER")"
+sweep_coordinates: "from" "("NUMBER","NUMBER")" "to" "("NUMBER","NUMBER")"
+coordinate_angle_length:  "from" "("NUMBER","NUMBER")" "with angle" numerical_expression "and length" NUMBER
+ident_sweep: "from" IDENT "to" IDENT
 
 
 
-animate_declaration: "@" (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration)
+animate_declaration: "@" (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | line_declaration | point_declaration)
 show_declaration: "show" vertical_line_declaration
 
 vertical_line_declaration: NUMBER "vertical lines on" IDENT
@@ -51,7 +57,7 @@ numerical_term      : numerical_factor ((MUL | DIV | MOD) numerical_factor)*
 numerical_factor     : numerical_base (EXP numerical_base)*
 numerical_base : NUMBER | "(" numerical_expression ")" | constant
 
-constant: PI | E
+constant: [SUB] (PI | E)
 
 
 

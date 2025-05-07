@@ -9,18 +9,22 @@ from arcane.utils import gen_id
 from arcane.core.models.constructs import (
     Animatable,
     Animation,
+    ArcanePoint,
+    CoordinateAngleLength,
     Definition,
     Identifier,
+    ArcaneLine,
     MathFunction,
-    ArcaneType,
     ParametricMathFunction,
     PolarBlock,
     PolarMathFunction,
+    SweepCoordinates,
     SweepDot,
     Program,
     RegularMathFunction,
     RelativePosition,
     RelativePositionPlacement,
+    SweepObjects,
     SweepTransform,
     AxisBlock,
     ArcaneText,
@@ -57,12 +61,15 @@ class ArcaneTransfomer(Transformer):
     def definition(self, items):
         name = None
         value = None
-        arctype = None
         for item in items:
             if isinstance(item, Identifier):
                 name = item
             elif isinstance(item, MathFunction):
-                arctype = ArcaneType.MATHFUNCTION
+                assert name is not None
+                # replace generated ID with variable name
+                item.id = name.value
+                value = item
+            elif isinstance(item, (ArcaneLine, ArcanePoint)):
                 assert name is not None
                 # replace generated ID with variable name
                 item.id = name.value
@@ -70,14 +77,12 @@ class ArcaneTransfomer(Transformer):
 
             elif isinstance(item, Float):
                 value = float(item)
-                arctype = ArcaneType.NUMBER
             else:
                 pass
 
         assert name is not None
         assert value is not None
-        assert arctype is not None
-        return Definition(arctype, name, value)
+        return Definition(name, value)
 
     def animate_declaration(self, items):
         items = list(filter(lambda x: x != None, items))
@@ -105,6 +110,9 @@ class ArcaneTransfomer(Transformer):
 
     def vertical_line_declaration(self, items):
         return VLines(gen_id(), variable=items[1].id, num_lines=items[0])
+
+    def line_declaration(self, items):
+        return ArcaneLine(id=gen_id(), definition=items[0])
 
     def write_declaration(self, items):
         # TODO:(dont use positions to extract items)
@@ -190,6 +198,14 @@ class ArcaneTransfomer(Transformer):
     def sweep(self, items):
         return SweepTransform(items[0], items[1])
 
+    def sweep_coordinates(self, items):
+        return SweepCoordinates(
+            sweep_from=(items[0], items[1]), sweep_to=(items[2], items[3])
+        )
+
+    def ident_sweep(self, items):
+        return SweepObjects(sweep_from=items[0].id, sweep_to=items[1].id)
+
     def numerical_expression(self, items):
         return float(sympify(" ".join(items)))
 
@@ -229,6 +245,14 @@ class ArcaneTransfomer(Transformer):
 
     def trigonometric_function(self, items):
         return f"{items[0]}({items[1]})"
+
+    def point_declaration(self, items):
+        return ArcanePoint(id=gen_id(), position=(items[0], items[1]))
+
+    def coordinate_angle_length(self, items):
+        return CoordinateAngleLength(
+            sweep_from=(items[0], items[1]), angle=items[2], length=items[3]
+        )
 
     def expression(self, items):
         if isinstance(
@@ -291,8 +315,9 @@ class ArcaneTransfomer(Transformer):
     def math_function(self, items):
         return items[0]
 
+    @filter_none
     def constant(self, items):
-        return items[0]
+        return float("".join(map(str, items)))
 
     def font_option_value(self, items):
         return items[0]

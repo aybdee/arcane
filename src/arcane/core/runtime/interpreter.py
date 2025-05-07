@@ -5,13 +5,15 @@ from pprint import pprint
 
 from arcane.core.models.constructs import (
     Animation,
+    ArcanePoint,
     Identifier,
+    ArcaneLine,
     ParametricMathFunction,
     PolarMathFunction,
     RegularMathFunction,
-    SweepTransform,
     ArcaneText,
     SweepDot,
+    SweepObjects,
     VLines,
 )
 
@@ -143,7 +145,9 @@ class ArcaneInterpreter:
                 instance.value,
             )
 
-        elif isinstance(instance, (VLines, SweepDot, ArcaneText)):
+        elif isinstance(
+            instance, (VLines, SweepDot, ArcaneText, ArcaneLine, ArcanePoint)
+        ):
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
                 instance
             )
@@ -189,6 +193,10 @@ class ArcaneInterpreter:
             if obj.position:
                 dep = [obj.position.variable]
 
+        elif isinstance(obj, ArcaneLine):
+            if isinstance(obj.definition, SweepObjects):
+                dep = [obj.definition.sweep_from, obj.definition.sweep_to]
+
         self.scene_builder.add_object(id=obj.id, value=obj, dependencies=dep)
 
     def _add_plot_block_to_builder(self, block: AxisBlock | PolarBlock, animations):
@@ -217,7 +225,10 @@ class ArcaneInterpreter:
                         )
                     self._add_object(data, default_dep=global_id)
 
-                elif isinstance(data, (VLines, SweepDot, ArcaneText)):
+                elif isinstance(
+                    data,
+                    (VLines, SweepDot, ArcaneText, ArcaneLine, ArcanePoint),
+                ):
                     self._add_object(data)
 
                 elif isinstance(data, Tuple) and len(data) == 2:
