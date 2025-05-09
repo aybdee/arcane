@@ -12,8 +12,12 @@ ident_sweep: "from" IDENT "to" IDENT
 
 
 
-animate_declaration: "@" (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | line_declaration | point_declaration)
+animate_declaration: "@" (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | line_declaration | point_declaration | angle_declaration)
 show_declaration: "show" vertical_line_declaration
+
+
+angle_declaration: "angle"  (three_point_angle | coordinate_angle_length)
+three_point_angle: "at" "("NUMBER","NUMBER")" "from" "("NUMBER","NUMBER")" "to" "("NUMBER","NUMBER")"
 
 vertical_line_declaration: NUMBER "vertical lines on" IDENT
 write_declaration: "write" write_value RELATIVE_POSITION IDENT ["with" font_option ("," font_option)*]
@@ -84,3 +88,4 @@ E: "e"
 
 %ignore WS
 %ignore NEWLINE
+

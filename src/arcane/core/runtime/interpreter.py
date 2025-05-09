@@ -6,6 +6,7 @@ from pprint import pprint
 from arcane.core.models.constructs import (
     Animation,
     ArcanePoint,
+    ArcaneElbow,
     Identifier,
     ArcaneLine,
     ParametricMathFunction,
@@ -146,7 +147,8 @@ class ArcaneInterpreter:
             )
 
         elif isinstance(
-            instance, (VLines, SweepDot, ArcaneText, ArcaneLine, ArcanePoint)
+            instance,
+            (VLines, SweepDot, ArcaneText, ArcaneLine, ArcanePoint, ArcaneElbow),
         ):
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
                 instance
@@ -196,6 +198,10 @@ class ArcaneInterpreter:
         elif isinstance(obj, ArcaneLine):
             if isinstance(obj.definition, SweepObjects):
                 dep = [obj.definition.sweep_from, obj.definition.sweep_to]
+                for point_id in dep:
+                    if not self.scene_builder.get(point_id):
+                        point = self.store.get_or_throw(point_id)
+                        self.scene_builder.add_object(id=point_id, value=point)
 
         self.scene_builder.add_object(id=obj.id, value=obj, dependencies=dep)
 
@@ -227,7 +233,14 @@ class ArcaneInterpreter:
 
                 elif isinstance(
                     data,
-                    (VLines, SweepDot, ArcaneText, ArcaneLine, ArcanePoint),
+                    (
+                        VLines,
+                        SweepDot,
+                        ArcaneText,
+                        ArcaneLine,
+                        ArcanePoint,
+                        ArcaneElbow,
+                    ),
                 ):
                     self._add_object(data)
 

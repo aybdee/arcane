@@ -7,10 +7,11 @@ from arcane.core.models.constructs import (
     VLines,
     ArcaneText,
     ArcaneLine,
+    ArcaneElbow,
 )
 from manim import *
 from arcane.graphics.animation import AnimationItem, AnimationPhase
-from arcane.graphics.renderers.geometry import render_line, render_point
+from arcane.graphics.renderers.geometry import render_line, render_point, render_elbow
 from arcane.graphics.renderers.graph import (
     render_sweep_dot,
     render_vlines_to_function,
@@ -22,7 +23,14 @@ import arcane.graphics.config
 
 
 SceneObject = (
-    Plot | PlotContainer | VLines | ArcaneText | SweepDot | ArcaneLine | ArcanePoint
+    Plot
+    | PlotContainer
+    | VLines
+    | ArcaneText
+    | SweepDot
+    | ArcaneLine
+    | ArcanePoint
+    | ArcaneElbow
 )
 
 
@@ -119,7 +127,6 @@ class SceneBuilder:
                     # TODO:(figure out better way to do this)
                     self.resolve_dependency(dependant_id)
                 except Exception as e:
-                    print("we're running into an error")
                     pass
 
             self.animations.append(
@@ -130,7 +137,6 @@ class SceneBuilder:
             )
 
         elif isinstance(node.value, ArcaneLine):
-            print("trying this")
             if isinstance(node.value.definition, SweepObjects):
                 from_node = self.dependency_tree[
                     node.value.definition.sweep_from
@@ -141,7 +147,6 @@ class SceneBuilder:
 
                 assert from_node.mobject is not None
 
-                print("reached here")
                 assert to_node.mobject is not None
 
                 self.animations.append(
@@ -277,6 +282,16 @@ class SceneBuilder:
             )
 
             self.groups.append(plots_group)
+
+        elif isinstance(node.value, ArcaneElbow):
+            angle_mobject = render_elbow(node.value)
+            node.mobject = angle_mobject
+            self.animations.append(
+                AnimationItem(
+                    animation=Create(angle_mobject),
+                    phase=AnimationPhase.PRIMARY,
+                )
+            )
 
     def build(self) -> None:
         no_deps = OrderedDict(

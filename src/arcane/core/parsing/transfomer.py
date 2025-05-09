@@ -29,6 +29,8 @@ from arcane.core.models.constructs import (
     AxisBlock,
     ArcaneText,
     VLines,
+    ThreePoint,
+    ArcaneElbow,
 )
 
 
@@ -248,6 +250,37 @@ class ArcaneTransfomer(Transformer):
 
     def point_declaration(self, items):
         return ArcanePoint(id=gen_id(), position=(items[0], items[1]))
+
+    def three_point_angle(self, items):
+        return ThreePoint(
+            vertex=(items[0], items[1]),
+            point1=(items[2], items[3]),
+            point2=(items[4], items[5]),
+        )
+
+    def angle_declaration(self, items):
+        return ArcaneElbow(id=gen_id(), definition=items[0])
+
+    # def angle_declaration(self, items):
+    #     if len(items) == 6:  # three point angle
+    #         return ArcaneAngle(
+    #             id=gen_id(),
+    #             definition=ThreePointAngle(
+    #                 vertex=(items[0], items[1]),
+    #                 point1=(items[2], items[3]),
+    #                 point2=(items[4], items[5]),
+    #             ),
+    #         )
+    #     else:  # angle length
+    #         start_point = (items[0], items[1])
+    #         angle = float(items[2])
+    #         length = float(items[3])
+    #         return ArcaneAngle(
+    #             id=gen_id(),
+    #             definition=AngleLength(
+    #                 start_point=start_point, angle=angle, length=length
+    #             ),
+    #         )
 
     def coordinate_angle_length(self, items):
         return CoordinateAngleLength(

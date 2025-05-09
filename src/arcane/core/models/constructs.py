@@ -110,6 +110,19 @@ class ArcaneText:
 
 
 @dataclass
+class ThreePoint:
+    vertex: Tuple[float, float]
+    point1: Tuple[float, float]
+    point2: Tuple[float, float]
+
+
+@dataclass
+class ArcaneElbow:
+    id: str
+    definition: ThreePoint | CoordinateAngleLength
+
+
+@dataclass
 class ArcanePoint:
     id: str
     position: Tuple[float, float]
@@ -161,5 +174,16 @@ class VLines:
 MathFunction = RegularMathFunction | ParametricMathFunction | PolarMathFunction
 MathTransform = SweepTransform
 Transform = MathTransform | SweepDot
-Animatable = Identifier | MathFunction | VLines | ArcaneText | SweepDot
+Animatable = (
+    Identifier
+    | MathFunction
+    | VLines
+    | ArcaneText
+    | SweepDot
+    | ArcaneLine
+    | ArcanePoint
+    | ArcaneElbow
+)
+
+
 ########### end union type definitions

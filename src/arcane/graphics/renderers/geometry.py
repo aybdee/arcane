@@ -10,6 +10,8 @@ from arcane.core.models.constructs import (
     CoordinateAngleLength,
     SweepCoordinates,
     SweepObjects,
+    ThreePoint,
+    ArcaneElbow,
 )
 import numpy as np
 from enum import Enum
@@ -47,3 +49,40 @@ def render_line(
             start=sweep_from,
             end=np.array(sweep_to),
         )
+
+
+def render_elbow(elbow: ArcaneElbow):
+    if isinstance(elbow.definition, ThreePoint):
+        vertex = np.array([*elbow.definition.vertex, 0])
+        point1 = np.array([*elbow.definition.point1, 0])
+        point2 = np.array([*elbow.definition.point2, 0])
+
+        line1 = Line(vertex, point1)
+        line2 = Line(vertex, point2)
+
+        angle_arc = Angle(line1, line2, radius=0.4, other_angle=False, color=WHITE)
+
+        return VGroup(line1, line2, angle_arc)
+
+    else:
+        start = np.array([*elbow.definition.sweep_from, 0])
+        # Calculate end point using angle and length
+        end = np.array(
+            [
+                start[0] + elbow.definition.length * np.cos(elbow.definition.angle),
+                start[1] + elbow.definition.length * np.sin(elbow.definition.angle),
+                0,
+            ]
+        )
+
+        # Create reference line (horizontal from start point)
+        ref_end = np.array([start[0] + elbow.definition.length, start[1], 0])
+        ref_line = Line(start, ref_end)
+
+        actual_line = Line(start, end)
+
+        angle_arc = Angle(
+            ref_line, actual_line, radius=0.4, other_angle=False, color=WHITE
+        )
+
+        return VGroup(actual_line, ref_line, angle_arc)
