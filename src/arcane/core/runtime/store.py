@@ -39,3 +39,6 @@ class Store:
 
     def __str__(self) -> str:
         return str(self.keys())
+
+    def __repr__(self) -> str:
+        return str(self._store.items())

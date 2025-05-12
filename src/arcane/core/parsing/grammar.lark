@@ -1,25 +1,35 @@
 start : program
 program : statement* 
-statement : definition | animate_declaration | axis_declaration | polar_declaration NEWLINE
-definition : "Define" IDENT "as" (expression | line_declaration | point_declaration)
+statement : definition | animate_declaration | axis_declaration | polar_declaration  NEWLINE
+definition : "Define" IDENT "as" (expression | line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration)
 expression : math_function | algebraic_expression 
 
 line_declaration: "line" (sweep_coordinates | coordinate_angle_length | ident_sweep)
-point_declaration: "point at"  "("NUMBER","NUMBER")"
-sweep_coordinates: "from" "("NUMBER","NUMBER")" "to" "("NUMBER","NUMBER")"
-coordinate_angle_length:  "from" "("NUMBER","NUMBER")" "with angle" numerical_expression "and length" NUMBER
+point_declaration: "point at"  "("numerical_expression","numerical_expression")"
+sweep_coordinates: "from" "("NUMBER","NUMBER")" "to" "("numerical_expression","numerical_expression")"
+coordinate_angle_length:  "from" "("numerical_expression","numerical_expression")" "with angle" numerical_expression "and length" numerical_expression
 ident_sweep: "from" IDENT "to" IDENT
+point_length: "at" "("numerical_expression","numerical_expression")" "with length" numerical_expression
+transform_declaration: "transform" expression "to" expression
+
+regular_polygon_declaration: "regular polygon with radius" numerical_expression "and sides" numerical_expression "at" "("numerical_expression","numerical_expression")"
+polygon_declaration: "polygon with points" point_list
+point_list: "("numerical_expression","numerical_expression")" ("," "("numerical_expression","numerical_expression")")*
 
 
+animate_declaration: "@" (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration)
 
-animate_declaration: "@" (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | line_declaration | point_declaration | angle_declaration)
 show_declaration: "show" vertical_line_declaration
 
 
 angle_declaration: "angle"  (three_point_angle | coordinate_angle_length)
-three_point_angle: "at" "("NUMBER","NUMBER")" "from" "("NUMBER","NUMBER")" "to" "("NUMBER","NUMBER")"
+three_point_angle: "at" "("numerical_expression","numerical_expression")" "from" "("numerical_expression","numerical_expression")" "to" "("numerical_expression","numerical_expression")"
 
-vertical_line_declaration: NUMBER "vertical lines on" IDENT
+square_declaration: "square" point_length
+
+rectangle_declaration: "rectangle with width" numerical_expression "and height" numerical_expression "at" "("numerical_expression","numerical_expression")"
+
+vertical_line_declaration: numerical_expression "vertical lines on" IDENT
 write_declaration: "write" write_value RELATIVE_POSITION IDENT ["with" font_option ("," font_option)*]
 
 write_value: STRING | latex

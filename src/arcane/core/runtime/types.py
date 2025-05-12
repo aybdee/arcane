@@ -9,6 +9,7 @@ class InterpreterErrorCode(Enum):
     UNSUPPORTED_STATEMENT = "Unsupported statement type: {statement_type}"
     UNSUPPORTED_PLOT = "Unsupported plot on axis"
     ANIMATION_ERROR = "Error during animation: {details}"
+    UNSUPPORTED_EXPRESSION = "Error evaluating expression {expression}: {error}"
 
 
 class InterpreterError(Exception):

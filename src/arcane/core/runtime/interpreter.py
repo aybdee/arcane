@@ -1,14 +1,15 @@
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 from enum import Enum
 from pprint import pprint
+import sympy
 
 
 from arcane.core.models.constructs import (
     Animation,
-    ArcanePoint,
-    ArcaneElbow,
     Identifier,
     ArcaneLine,
+    ObjectTransform,
+    ObjectTransformExpression,
     ParametricMathFunction,
     PolarMathFunction,
     RegularMathFunction,
@@ -16,6 +17,7 @@ from arcane.core.models.constructs import (
     SweepDot,
     SweepObjects,
     VLines,
+    DirectAnimatable,
 )
 
 
@@ -68,8 +70,8 @@ class ArcaneInterpreter:
         self.animation_blocks: List[PlotContainer] = []
         self.global_container: Optional[Dict] = None
 
-    def process_expression(self, expression: Any) -> Any:
-        """Evaluates all the terms inside an expression that have stored identifiers"""
+    def evaluate_algebraic_expression(self, expression: sympy.Basic) -> Any:
+        """Evaluates all the terms inside an algebraic expression from stored identifiers"""
         variables = list(expression.free_symbols)
         evaluated_expr = expression
 
@@ -80,6 +82,70 @@ class ArcaneInterpreter:
                 evaluated_expr = evaluated_expr.subs({variable: stored_value})
 
         return evaluated_expr
+
+    def evaluate_expression(self, expression: sympy.Basic) -> Any:
+        """Evaluates all the terms inside an arcane expression"""
+        # check if expression is algebraic in nature
+        if isinstance(expression, (sympy.core.add.Add, sympy.core.mul.Mul)):
+            # evaluate stored numerical component if any
+            expression = self.evaluate_algebraic_expression(expression)
+            variables = list(expression.free_symbols)
+            stored_values = {}
+            for variable in variables:
+                var_name = str(variable)
+                stored_value = self.store.get(var_name)
+                if stored_value:
+                    stored_values.update({var_name: stored_value})
+
+            if stored_values:
+                # check if entire expression is algebraic
+                # for now the main test is if all the components being added are of the same type
+                stored_types = list(set(map(type, stored_values.values())))
+                if len(stored_types) != 1:
+                    raise InterpreterError(
+                        InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
+                        expression=str(expression),
+                        error=f"cannot combine values of type {stored_types[0].__name__} and {stored_types[1].__name__}",
+                    )
+                else:
+                    # pick first value as reference since now we're sure they all have the same type
+                    reference_value = list(stored_values.values())[0]
+                    if isinstance(reference_value, RegularMathFunction):
+                        for var_name in stored_values.keys():
+                            expression = expression.subs(
+                                var_name, stored_values[var_name].expression
+                            )
+
+                        return RegularMathFunction(
+                            id=gen_id(),
+                            variables=list(map(str, expression.free_symbols)),
+                            expression=expression,
+                        )
+
+                    elif isinstance(reference_value, PolarMathFunction):
+                        for var_name in stored_values.keys():
+                            expression = expression.subs(
+                                var_name, stored_values[var_name].expression
+                            )
+
+                        return PolarMathFunction(
+                            id=gen_id(),
+                            variables=list(map(str, expression.free_symbols)),
+                            expression=expression,
+                        )
+
+                    elif isinstance(reference_value, ParametricMathFunction):
+                        # TODO:(implement for parametric math functions)
+                        pass
+
+        elif isinstance(expression, sympy.core.symbol.Symbol):
+            return self.store.get_or_throw(str(expression))
+        else:
+            raise InterpreterError(
+                InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
+                expression=str(expression),
+                error=f"cannot evalute expression {expression}",
+            )
 
     def execute_next(self) -> InterpreterMessage:
         """Execute the next statement in the program"""
@@ -101,15 +167,14 @@ class ArcaneInterpreter:
                 current_statement, PolarBlock
             ):
                 return self._handle_plot_block(current_statement)
+
             else:
                 # Handle unsupported statement type
                 raise InterpreterError(
                     InterpreterErrorCode.UNSUPPORTED_STATEMENT,
                     statement_type=type(current_statement).__name__,
                 )
-        except InterpreterError:
-            raise
-        except Exception as e:
+        except InterpreterError as e:
             raise e
             # raise InterpreterError(InterpreterErrorCode.UNKNOWN, details=str(e)) #TODO:(uncomment)
 
@@ -122,18 +187,22 @@ class ArcaneInterpreter:
         id = id if id else gen_id()
 
         if isinstance(instance, RegularMathFunction):
-            instance.expression = self.process_expression(instance.expression)
+            instance.expression = self.evaluate_algebraic_expression(
+                instance.expression
+            )
             plot = render_regular_math_function(id, instance, transforms)
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
 
         if isinstance(instance, PolarMathFunction):
-            instance.expression = self.process_expression(instance.expression)
+            instance.expression = self.evaluate_algebraic_expression(
+                instance.expression
+            )
             plot = render_polar_math_function(id, instance, transforms)
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
 
         elif isinstance(instance, ParametricMathFunction):
             instance.expressions = list(
-                map(self.process_expression, instance.expressions)
+                map(self.evaluate_algebraic_expression, instance.expressions)
             )
             plot = render_parametric_math_function(id, instance, transforms)
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
@@ -146,9 +215,23 @@ class ArcaneInterpreter:
                 instance.value,
             )
 
+        elif isinstance(instance, ObjectTransformExpression):
+            evaluate_expr_from = self.evaluate_expression(instance.object_from)
+            evaluate_expr_to = self.evaluate_expression(instance.object_to)
+            return self.process_animation(
+                Animation(
+                    instance=ObjectTransform(
+                        id=gen_id(),
+                        object_from=evaluate_expr_from,
+                        object_to=evaluate_expr_to,
+                    ),
+                    transforms=transforms,
+                )
+            )
+
         elif isinstance(
             instance,
-            (VLines, SweepDot, ArcaneText, ArcaneLine, ArcanePoint, ArcaneElbow),
+            DirectAnimatable,
         ):
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
                 instance
@@ -195,6 +278,9 @@ class ArcaneInterpreter:
             if obj.position:
                 dep = [obj.position.variable]
 
+        elif isinstance(obj, ObjectTransform):
+            dep = [obj.object_from]
+
         elif isinstance(obj, ArcaneLine):
             if isinstance(obj.definition, SweepObjects):
                 dep = [obj.definition.sweep_from, obj.definition.sweep_to]
@@ -233,14 +319,7 @@ class ArcaneInterpreter:
 
                 elif isinstance(
                     data,
-                    (
-                        VLines,
-                        SweepDot,
-                        ArcaneText,
-                        ArcaneLine,
-                        ArcanePoint,
-                        ArcaneElbow,
-                    ),
+                    DirectAnimatable,
                 ):
                     self._add_object(data)
 
@@ -249,8 +328,7 @@ class ArcaneInterpreter:
                     self._add_plot_block_to_builder(block, animations)
 
             except InterpreterError as e:
-                print(f"Error: {e}")
-                break
+                raise e
 
         # Render the final scene if there are any animation blocks
         if self.scene_builder.num_objects() != 0:

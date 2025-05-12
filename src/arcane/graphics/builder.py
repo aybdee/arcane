@@ -2,19 +2,35 @@ from dataclasses import dataclass
 from typing import Any, List, Optional, OrderedDict
 from arcane.core.models.constructs import (
     ArcanePoint,
+    ObjectTransform,
     SweepDot,
     SweepObjects,
     VLines,
     ArcaneText,
     ArcaneLine,
     ArcaneElbow,
+    ArcaneSquare,
+    ArcaneRectangle,
+    ArcaneRegularPolygon,
+    ArcanePolygon,
 )
 from manim import *
 from arcane.graphics.animation import AnimationItem, AnimationPhase
-from arcane.graphics.renderers.geometry import render_line, render_point, render_elbow
+from arcane.graphics.renderers.geometry import (
+    render_line,
+    render_point,
+    render_elbow,
+    render_square,
+    render_rectangle,
+    render_regular_polygon,
+    render_polygon,
+)
 from arcane.graphics.renderers.graph import (
     render_sweep_dot,
     render_vlines_to_function,
+    render_regular_math_function,
+    render_parametric_math_function,
+    render_polar_math_function,
 )
 from arcane.graphics.renderers.misc import render_text
 from arcane.graphics.objects import Plot, PlotContainer
@@ -31,6 +47,11 @@ SceneObject = (
     | ArcaneLine
     | ArcanePoint
     | ArcaneElbow
+    | ArcaneSquare
+    | ArcaneRectangle
+    | ArcaneRegularPolygon
+    | ArcanePolygon
+    | ObjectTransform
 )
 
 
@@ -165,6 +186,10 @@ class SceneBuilder:
                     )
                 )
 
+        elif isinstance(node.value, ObjectTransform):
+            from_object_id = node.dependencies[0]
+            from_object = self.dependency_tree[from_object_id]
+
         elif isinstance(node.value, ArcaneText):
             parent_object_id = node.dependencies[0]
             parent_object = self.dependency_tree[parent_object_id]
@@ -293,12 +318,97 @@ class SceneBuilder:
                 )
             )
 
-    def build(self) -> None:
-        no_deps = OrderedDict(
-            (k, v) for k, v in self.dependency_tree.items() if not v.dependencies
-        )
+        elif isinstance(node.value, ArcaneSquare):
+            square_mobject = render_square(node.value)
+            node.mobject = square_mobject
+            self.animations.append(
+                AnimationItem(
+                    animation=Create(square_mobject),
+                    phase=AnimationPhase.PRIMARY,
+                )
+            )
 
-        for dependency_id in no_deps.keys():
-            self.resolve_dependency(dependency_id)
+        elif isinstance(node.value, ArcaneRectangle):
+            rectangle_mobject = render_rectangle(node.value)
+            node.mobject = rectangle_mobject
+            self.animations.append(
+                AnimationItem(
+                    animation=Create(rectangle_mobject),
+                    phase=AnimationPhase.PRIMARY,
+                )
+            )
+
+        elif isinstance(node.value, ArcaneRegularPolygon):
+            polygon_mobject = render_regular_polygon(node.value)
+            node.mobject = polygon_mobject
+            self.animations.append(
+                AnimationItem(
+                    animation=Create(polygon_mobject),
+                    phase=AnimationPhase.PRIMARY,
+                )
+            )
+
+        elif isinstance(node.value, ArcanePolygon):
+            polygon_mobject = render_polygon(node.value)
+            node.mobject = polygon_mobject
+            self.animations.append(
+                AnimationItem(
+                    animation=Create(polygon_mobject),
+                    phase=AnimationPhase.PRIMARY,
+                )
+            )
+
+    def build(self) -> None:
+        def get_pending_animations() -> OrderedDict[str, DependencyNode]:
+            pending = OrderedDict()
+
+            # Check items without dependencies first
+            for id, node in self.dependency_tree.items():
+                if not node.dependencies and node.mobject is None:
+                    pending[id] = node
+
+            # Check items with dependencies
+            for id, node in self.dependency_tree.items():
+                if node.mobject is None and node.dependencies:
+                    # Check if all dependencies are resolved
+                    all_deps_resolved = all(
+                        self.dependency_tree[dep].mobject is not None
+                        for dep in node.dependencies
+                    )
+                    if all_deps_resolved:
+                        pending[id] = node
+
+            return pending
+
+        previous_pending = None
+        iteration_count = 0
+
+        while True:
+            pending = get_pending_animations()
+
+            # No more pending animations, we're done
+            if not pending:
+                break
+
+            # Check if we're stuck in a loop
+            if pending == previous_pending:
+                iteration_count += 1
+                if iteration_count >= 2:
+                    unresolved = [
+                        id
+                        for id, node in self.dependency_tree.items()
+                        if node.mobject is None
+                    ]
+                    raise ValueError(
+                        f"Unable to resolve dependencies after multiple iterations. Unresolved nodes: {unresolved}"
+                    )
+            else:
+                iteration_count = 0
+
+            # Process pending animations
+            for dependency_id in pending.keys():
+                self.resolve_dependency(dependency_id)
+
+            previous_pending = pending
 
         pprint(self.dependency_tree)

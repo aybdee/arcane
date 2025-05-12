@@ -153,9 +153,7 @@ def render_regular_math_function(
 
 
 def render_sweep_dot(axes: Axes, math_function: Callable, range: Tuple[float, float]):
-
     t = ValueTracker(int(range[0]))
-
     dot = Dot(
         point=axes.coords_to_point(t.get_value(), math_function(t.get_value())),
         color=WHITE,

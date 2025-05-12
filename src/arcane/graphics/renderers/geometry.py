@@ -7,11 +7,14 @@ from arcane.graphics.objects import Plot
 from arcane.core.models.constructs import (
     ArcaneLine,
     ArcanePoint,
-    CoordinateAngleLength,
     SweepCoordinates,
     SweepObjects,
     ThreePoint,
     ArcaneElbow,
+    ArcaneSquare,
+    ArcaneRectangle,
+    ArcaneRegularPolygon,
+    ArcanePolygon,
 )
 import numpy as np
 from enum import Enum
@@ -86,3 +89,56 @@ def render_elbow(elbow: ArcaneElbow):
         )
 
         return VGroup(actual_line, ref_line, angle_arc)
+
+
+def render_square(square: ArcaneSquare):
+    start = np.array([*square.definition.point, 0])
+    length = square.definition.length
+
+    # Create square using a Rectangle with equal width and height
+    square_mobject = Square(
+        side_length=length,
+        color=get_random_color(),
+    ).move_to(start)
+
+    return square_mobject
+
+
+def render_rectangle(rectangle: ArcaneRectangle):
+    start = np.array([*rectangle.definition.point, 0])
+    width = rectangle.definition.width
+    height = rectangle.definition.height
+
+    rectangle_mobject = Rectangle(
+        width=width,
+        height=height,
+        color=get_random_color(),
+    ).move_to(start)
+
+    return rectangle_mobject
+
+
+def render_regular_polygon(polygon: ArcaneRegularPolygon):
+    start = np.array([*polygon.definition.point, 0])
+    radius = polygon.definition.radius
+    num_sides = polygon.definition.num_sides
+
+    polygon_mobject = RegularPolygon(
+        n=num_sides,
+        radius=radius,
+        color=get_random_color(),
+    ).move_to(start)
+
+    return polygon_mobject
+
+
+def render_polygon(polygon: ArcanePolygon):
+    # Convert points to numpy arrays with z=0
+    points = [np.array([*point, 0]) for point in polygon.definition.points]
+
+    polygon_mobject = Polygon(
+        *points,
+        color=get_random_color(),
+    )
+
+    return polygon_mobject
