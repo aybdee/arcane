@@ -2,7 +2,11 @@ from dataclasses import dataclass
 from typing import Any, List, Optional, OrderedDict
 from arcane.core.models.constructs import (
     ArcanePoint,
+    MathFunction,
     ObjectTransform,
+    ParametricMathFunction,
+    PolarMathFunction,
+    RegularMathFunction,
     SweepDot,
     SweepObjects,
     VLines,
@@ -26,21 +30,19 @@ from arcane.graphics.renderers.geometry import (
     render_polygon,
 )
 from arcane.graphics.renderers.graph import (
+    render_math_function,
     render_sweep_dot,
     render_vlines_to_function,
-    render_regular_math_function,
-    render_parametric_math_function,
-    render_polar_math_function,
 )
 from arcane.graphics.renderers.misc import render_text
-from arcane.graphics.objects import Plot, PlotContainer
+from arcane.graphics.objects import PlotContainer
 from pprint import pprint
 import arcane.graphics.config
+from arcane.graphics.utils.math import generate_math_function
 
 
 SceneObject = (
-    Plot
-    | PlotContainer
+    PlotContainer
     | VLines
     | ArcaneText
     | SweepDot
@@ -52,6 +54,7 @@ SceneObject = (
     | ArcaneRegularPolygon
     | ArcanePolygon
     | ObjectTransform
+    | MathFunction
 )
 
 
@@ -123,17 +126,17 @@ class SceneBuilder:
             (k, v) for k, v in self.dependency_tree.items() if id in v.dependencies
         )
 
-        if isinstance(node.value, Plot):
+        if isinstance(node.value, MathFunction):
             container_id = node.dependencies[0]
             container = self.dependency_tree[container_id]
             if container.mobject is None:
                 raise ValueError(
                     f"Container mobject for {container_id} is not resolved"
                 )
-            plot = node.value.render(container.mobject)
+
+            plot = render_math_function(node.value, container.mobject)
+
             node.mobject = plot
-            for dependant_id in dependants.keys():
-                self.resolve_dependency(dependant_id)
 
             self.animations.append(
                 AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
@@ -187,8 +190,39 @@ class SceneBuilder:
                 )
 
         elif isinstance(node.value, ObjectTransform):
-            from_object_id = node.dependencies[0]
+            from_object_id = node.value.object_from.id
+            to_object = node.value.object_to
             from_object = self.dependency_tree[from_object_id]
+            container_id = from_object.dependencies[0]
+            container = self.dependency_tree[container_id]
+            if container.mobject is None:
+                raise ValueError(
+                    f"Container mobject for {container_id} is not resolved"
+                )
+
+            assert from_object.mobject is not None
+
+            if isinstance(from_object.value, MathFunction):
+                to_object.x_range = from_object.value.x_range
+                to_object.y_range = from_object.value.y_range
+                if isinstance(from_object.value, ParametricMathFunction):
+                    assert isinstance(to_object, ParametricMathFunction)
+                    to_object.t_range = from_object.value.t_range
+
+            # come up with cleaner way to do this
+            to_object.math_function = generate_math_function(to_object)
+            to_mobject = render_math_function(
+                to_object, container.mobject, from_object.mobject.color
+            )
+            assert isinstance(from_object.mobject, Mobject)
+            self.animations.append(
+                AnimationItem(
+                    animation=ReplacementTransform(from_object.mobject, to_mobject),
+                    phase=AnimationPhase.PRIMARY,
+                )
+            )
+
+            node.mobject = to_mobject
 
         elif isinstance(node.value, ArcaneText):
             parent_object_id = node.dependencies[0]
@@ -211,7 +245,7 @@ class SceneBuilder:
             parent_plot_id = node.dependencies[0]
             parent_plot = self.dependency_tree[parent_plot_id]
 
-            if not isinstance(parent_plot.value, Plot):
+            if not isinstance(parent_plot.value, MathFunction):
                 raise ValueError(
                     f"Expected Plot for {parent_plot_id}, got {type(parent_plot.value)}"
                 )
@@ -223,6 +257,11 @@ class SceneBuilder:
             if parent_axis_node.mobject is None:
                 raise ValueError(
                     f"Parent axis mobject for {parent_axis_id} is not resolved"
+                )
+
+            if not isinstance(parent_plot.value, MathFunction):
+                raise ValueError(
+                    f"Expected Plot for {parent_plot_id}, got {type(parent_plot.value)}"
                 )
 
             parent_axis = parent_axis_node.mobject
@@ -246,7 +285,7 @@ class SceneBuilder:
             parent_plot_id = node.dependencies[0]
             parent_plot = self.dependency_tree[parent_plot_id]
 
-            if not isinstance(parent_plot.value, Plot):
+            if not isinstance(parent_plot.value, MathFunction):
                 raise ValueError(
                     f"Expected Plot for {parent_plot_id}, got {type(parent_plot.value)}"
                 )
@@ -258,7 +297,9 @@ class SceneBuilder:
             assert parent_axis is not None
 
             dot, tracker = render_sweep_dot(
-                parent_axis, parent_plot.value.math_function, parent_plot.value.x_range
+                parent_axis,
+                parent_plot.value.math_function,
+                parent_plot.value.x_range,
             )
 
             node.mobject = dot
@@ -282,7 +323,7 @@ class SceneBuilder:
         elif isinstance(node.value, PlotContainer):
             for dependant_id in dependants.keys():
                 dependant = self.dependency_tree[dependant_id]
-                if isinstance(dependant.value, Plot):
+                if isinstance(dependant.value, MathFunction):
                     node.value.add(dependant.value)
 
             node.mobject = node.value.render()
@@ -359,6 +400,7 @@ class SceneBuilder:
             )
 
     def build(self) -> None:
+
         def get_pending_animations() -> OrderedDict[str, DependencyNode]:
             pending = OrderedDict()
 
@@ -410,5 +452,3 @@ class SceneBuilder:
                 self.resolve_dependency(dependency_id)
 
             previous_pending = pending
-
-        pprint(self.dependency_tree)

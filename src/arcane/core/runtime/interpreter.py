@@ -1,13 +1,14 @@
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 from enum import Enum
 from pprint import pprint
+import numpy as np
 import sympy
-
 
 from arcane.core.models.constructs import (
     Animation,
     Identifier,
     ArcaneLine,
+    MathFunction,
     ObjectTransform,
     ObjectTransformExpression,
     ParametricMathFunction,
@@ -16,17 +17,13 @@ from arcane.core.models.constructs import (
     ArcaneText,
     SweepDot,
     SweepObjects,
+    SweepTransform,
     VLines,
     DirectAnimatable,
 )
 
 
 from arcane.graphics.builder import SceneBuilder
-from arcane.graphics.renderers.graph import (
-    render_parametric_math_function,
-    render_polar_math_function,
-    render_regular_math_function,
-)
 
 from arcane.core.models.constructs import (
     Animation,
@@ -37,7 +34,6 @@ from arcane.core.models.constructs import (
 )
 from arcane.graphics.objects import (
     PlotContainer,
-    Plot,
 )
 
 from arcane.graphics.scene import construct_scene
@@ -49,6 +45,11 @@ from arcane.core.runtime.types import (
     InterpreterErrorCode,
 )
 from arcane.core.runtime.store import Store
+from arcane.graphics.utils.math import (
+    avoid_zero,
+    compute_function_range,
+    generate_math_function,
+)
 from arcane.utils import gen_id
 
 
@@ -186,26 +187,47 @@ class ArcaneInterpreter:
         transforms = animation.transforms
         id = id if id else gen_id()
 
-        if isinstance(instance, RegularMathFunction):
+        if isinstance(instance, (RegularMathFunction, PolarMathFunction)):
             instance.expression = self.evaluate_algebraic_expression(
                 instance.expression
             )
-            plot = render_regular_math_function(id, instance, transforms)
-            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
-
-        if isinstance(instance, PolarMathFunction):
-            instance.expression = self.evaluate_algebraic_expression(
-                instance.expression
+            assert isinstance(transforms[0], SweepTransform)
+            instance.x_range = (
+                avoid_zero(transforms[0].sweep_from),
+                avoid_zero(transforms[0].sweep_to),
             )
-            plot = render_polar_math_function(id, instance, transforms)
-            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
+            instance.math_function = generate_math_function(instance)
+            instance.y_range = compute_function_range(
+                instance.math_function, instance.x_range
+            )
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
+                instance
+            )
 
         elif isinstance(instance, ParametricMathFunction):
             instance.expressions = list(
                 map(self.evaluate_algebraic_expression, instance.expressions)
             )
-            plot = render_parametric_math_function(id, instance, transforms)
-            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
+            assert isinstance(transforms[0], SweepTransform)
+            instance.t_range = (
+                avoid_zero(transforms[0].sweep_from),
+                avoid_zero(transforms[0].sweep_to),
+            )
+            instance.math_function = generate_math_function(instance)
+
+            # For parametric functions, we need to compute x and y ranges separately
+            x_function = lambda t: instance.expressions[0].subs(
+                instance.variables[0], t
+            )
+            y_function = lambda t: instance.expressions[1].subs(
+                instance.variables[0], t
+            )
+            instance.x_range = compute_function_range(x_function, instance.t_range)
+            instance.y_range = compute_function_range(y_function, instance.t_range)
+
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
+                instance
+            )
 
         elif isinstance(instance, Identifier):
             # Resolve the identifier and process the result
@@ -256,7 +278,7 @@ class ArcaneInterpreter:
         for animation in block.animations:
             processed_animation = self.process_animation(animation)
             if processed_animation.data:
-                if isinstance(processed_animation.data, Plot):
+                if isinstance(processed_animation.data, MathFunction):
                     if processed_animation.data.container_type != expected_container:
                         InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
                 processed_animations.append(processed_animation.data)
@@ -268,7 +290,9 @@ class ArcaneInterpreter:
     def _add_object(self, obj, *, default_dep=None):
         """Helper to add an object with optional dependency logic"""
         dep = []
-        if isinstance(obj, Plot):
+        if isinstance(
+            obj, (RegularMathFunction, ParametricMathFunction, PolarMathFunction)
+        ):
             dep = [default_dep] if default_dep else []
         elif isinstance(obj, VLines):
             dep = [obj.variable]
@@ -279,7 +303,7 @@ class ArcaneInterpreter:
                 dep = [obj.position.variable]
 
         elif isinstance(obj, ObjectTransform):
-            dep = [obj.object_from]
+            dep = [obj.object_from.id]
 
         elif isinstance(obj, ArcaneLine):
             if isinstance(obj.definition, SweepObjects):
@@ -305,7 +329,7 @@ class ArcaneInterpreter:
                 result = self.execute_next()
                 data = result.data
 
-                if isinstance(data, Plot):
+                if isinstance(data, MathFunction):
                     container_type = data.container_type
                     global_id = (
                         "global_axis" if container_type == "Axis" else "global_polar"

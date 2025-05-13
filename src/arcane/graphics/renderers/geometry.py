@@ -2,8 +2,6 @@ from dataclasses import dataclass
 from typing import Callable, Optional, Tuple
 from manim import *
 from arcane.graphics.utils.manim import get_random_color
-from arcane.graphics.utils.math import avoid_zero, compute_function_range
-from arcane.graphics.objects import Plot
 from arcane.core.models.constructs import (
     ArcaneLine,
     ArcanePoint,

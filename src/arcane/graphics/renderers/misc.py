@@ -5,7 +5,6 @@ from arcane.core.models.constructs import (
     ArcaneText,
     RelativePositionPlacement,
 )
-from arcane.graphics.objects import Plot
 import numpy as np
 from enum import Enum
 

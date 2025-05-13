@@ -1,7 +1,7 @@
 from __future__ import annotations
 from lark import ParseTree
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Callable, Dict, List, Any, Literal, Optional, Tuple
 from enum import Enum
 import sympy
 
@@ -83,11 +83,17 @@ class ObjectTransform:
 
 
 ######### math functions
+
+
 @dataclass
 class RegularMathFunction:
     id: str
     variables: List[str]
     expression: Any
+    math_function: Callable = lambda x: ...
+    x_range: Tuple[float, float] = (0, 0)
+    y_range: Tuple[float, float] = (0, 0)
+    container_type: Literal["Axis"] = "Axis"  # TODO:(remove this in refactor)
 
 
 @dataclass
@@ -95,6 +101,11 @@ class ParametricMathFunction:
     id: str
     variables: List[str]
     expressions: Any
+    math_function: Callable = lambda x: ...
+    t_range: Tuple[float, float] = (0, 0)
+    x_range: Tuple[float, float] = (0, 0)
+    y_range: Tuple[float, float] = (0, 0)
+    container_type: Literal["Axis"] = "Axis"
 
 
 @dataclass
@@ -102,6 +113,10 @@ class PolarMathFunction:
     id: str
     variables: List[str]
     expression: Any
+    math_function: Callable = lambda x: ...
+    x_range: Tuple[float, float] = (0, 0)
+    y_range: Tuple[float, float] = (0, 0)
+    container_type: Literal["PolarPlane"] = "PolarPlane"
 
 
 ######### end math functions

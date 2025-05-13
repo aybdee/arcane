@@ -10,6 +10,7 @@ class InterpreterErrorCode(Enum):
     UNSUPPORTED_PLOT = "Unsupported plot on axis"
     ANIMATION_ERROR = "Error during animation: {details}"
     UNSUPPORTED_EXPRESSION = "Error evaluating expression {expression}: {error}"
+    UNEXPECTED_TYPE = "Expected value of type {expected} got {gotten}"
 
 
 class InterpreterError(Exception):
