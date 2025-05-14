@@ -1,3 +1,6 @@
-Define circle as parametric (t) = (cos(t), sin(t))
-@circle from 0 to 2 * PI
-@transform circle to (2 * cos(2*t), 2 * sin(t))
+Define basic as f(x) = sin(x)
+@basic from -PI to PI
+@transform basic to basic + sin(x)
+@transform basic to basic + cos(2*x)
+@transform basic to basic + sin(2 * x)
+@transform basic to 0.8 * basic

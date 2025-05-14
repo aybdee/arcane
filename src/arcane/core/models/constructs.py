@@ -69,7 +69,7 @@ class CoordinateAngleLength:
 @dataclass
 class ObjectTransformExpression:
     object_from: sympy.Basic
-    object_to: sympy.Basic
+    object_to: sympy.Basic | List[sympy.Basic]
 
 
 @dataclass

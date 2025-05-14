@@ -2,7 +2,7 @@ start : program
 program : statement* 
 statement : definition | animate_declaration | axis_declaration | polar_declaration  NEWLINE
 definition : "Define" IDENT "as" (expression | line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration)
-expression : math_function | algebraic_expression 
+expression : math_function | algebraic_expression  | parametric_expression
 
 line_declaration: "line" (sweep_coordinates | coordinate_angle_length | ident_sweep)
 point_declaration: "point at"  "("numerical_expression","numerical_expression")"
@@ -60,6 +60,7 @@ parametric_math_function: "parametric" "("(IDENT) ("," IDENT)*")" "=" "(" algebr
 trigonometric_function: (SIN | COS | TAN) "(" algebraic_expression ")"
 
 
+parametric_expression: "(" algebraic_expression ("," algebraic_expression)* ")"
 algebraic_expression : algebraic_term ((ADD | SUB) algebraic_term)*
 algebraic_term      : algebraic_factor ((MUL | DIV | MOD) algebraic_factor)*
 algebraic_factor     : algebraic_base (EXP algebraic_base)*

@@ -221,6 +221,7 @@ class SceneBuilder:
                     phase=AnimationPhase.PRIMARY,
                 )
             )
+            from_object.mobject = to_mobject
 
             node.mobject = to_mobject
 

@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 from enum import Enum
 from pprint import pprint
 import numpy as np
+import copy
 import sympy
 
 from arcane.core.models.constructs import (
@@ -84,11 +85,67 @@ class ArcaneInterpreter:
 
         return evaluated_expr
 
-    def evaluate_expression(self, expression: sympy.Basic) -> Any:
+    def evaluate_expression(self, expression: Any) -> Any:
         """Evaluates all the terms inside an arcane expression"""
-        # check if expression is algebraic in nature
+        # Handle parametric functions (list of expressions) separately
+        if isinstance(expression, List):
+            # Create new expressions by substituting stored values
+            new_expressions = []
+            for expr in expression:
+                if isinstance(expr, (sympy.core.add.Add, sympy.core.mul.Mul)):
+                    evaluated_expr = self.evaluate_algebraic_expression(expr)
+                    variables = list(evaluated_expr.free_symbols)
+                    stored_values = {}
+                    for variable in variables:
+                        var_name = str(variable)
+                        stored_value = self.store.get(var_name)
+                        if stored_value:
+                            stored_values.update({var_name: stored_value})
+
+                    if stored_values:
+                        # For parametric functions, all components must be parametric
+                        stored_types = list(set(map(type, stored_values.values())))
+                        if not all(
+                            isinstance(val, ParametricMathFunction)
+                            for val in stored_values.values()
+                        ):
+                            raise InterpreterError(
+                                InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
+                                expression=str(expression),
+                                error="all components must be parametric functions",
+                            )
+
+                        # Substitute each component
+                        substituted_expr = evaluated_expr
+                        for var_name, value in stored_values.items():
+                            if len(value.expressions) != len(expression):
+                                raise InterpreterError(
+                                    InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
+                                    expression=str(expression),
+                                    error="parametric functions must have same number of components",
+                                )
+                            idx = len(new_expressions)
+                            substituted_expr = substituted_expr.subs(
+                                var_name,
+                                value.expressions[idx],
+                            )
+                        new_expressions.append(substituted_expr)
+                    else:
+                        new_expressions.append(evaluated_expr)
+                else:
+                    new_expressions.append(expr)
+
+            return ParametricMathFunction(
+                id=gen_id(),
+                variables=list(map(str, new_expressions[0].free_symbols)),
+                expressions=new_expressions,
+            )
+
+        # Handle single expressions
+        if isinstance(expression, sympy.core.symbol.Symbol):
+            return self.store.get_or_throw(str(expression))
+
         if isinstance(expression, (sympy.core.add.Add, sympy.core.mul.Mul)):
-            # evaluate stored numerical component if any
             expression = self.evaluate_algebraic_expression(expression)
             variables = list(expression.free_symbols)
             stored_values = {}
@@ -99,8 +156,6 @@ class ArcaneInterpreter:
                     stored_values.update({var_name: stored_value})
 
             if stored_values:
-                # check if entire expression is algebraic
-                # for now the main test is if all the components being added are of the same type
                 stored_types = list(set(map(type, stored_values.values())))
                 if len(stored_types) != 1:
                     raise InterpreterError(
@@ -108,45 +163,34 @@ class ArcaneInterpreter:
                         expression=str(expression),
                         error=f"cannot combine values of type {stored_types[0].__name__} and {stored_types[1].__name__}",
                     )
-                else:
-                    # pick first value as reference since now we're sure they all have the same type
-                    reference_value = list(stored_values.values())[0]
-                    if isinstance(reference_value, RegularMathFunction):
-                        for var_name in stored_values.keys():
-                            expression = expression.subs(
-                                var_name, stored_values[var_name].expression
-                            )
 
+                reference_value = list(stored_values.values())[0]
+                if isinstance(
+                    reference_value, (RegularMathFunction, PolarMathFunction)
+                ):
+                    for var_name in stored_values.keys():
+                        expression = expression.subs(
+                            var_name, stored_values[var_name].expression
+                        )
+
+                    if isinstance(reference_value, RegularMathFunction):
                         return RegularMathFunction(
                             id=gen_id(),
                             variables=list(map(str, expression.free_symbols)),
                             expression=expression,
                         )
-
-                    elif isinstance(reference_value, PolarMathFunction):
-                        for var_name in stored_values.keys():
-                            expression = expression.subs(
-                                var_name, stored_values[var_name].expression
-                            )
-
+                    else:  # PolarMathFunction
                         return PolarMathFunction(
                             id=gen_id(),
                             variables=list(map(str, expression.free_symbols)),
                             expression=expression,
                         )
 
-                    elif isinstance(reference_value, ParametricMathFunction):
-                        # TODO:(implement for parametric math functions)
-                        pass
-
-        elif isinstance(expression, sympy.core.symbol.Symbol):
-            return self.store.get_or_throw(str(expression))
-        else:
-            raise InterpreterError(
-                InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
-                expression=str(expression),
-                error=f"cannot evalute expression {expression}",
-            )
+        raise InterpreterError(
+            InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
+            expression=str(expression),
+            error=f"cannot evaluate expression {expression}",
+        )
 
     def execute_next(self) -> InterpreterMessage:
         """Execute the next statement in the program"""
@@ -240,6 +284,15 @@ class ArcaneInterpreter:
         elif isinstance(instance, ObjectTransformExpression):
             evaluate_expr_from = self.evaluate_expression(instance.object_from)
             evaluate_expr_to = self.evaluate_expression(instance.object_to)
+            # update store with new expression
+            if self.store.get(str(instance.object_from)):
+                variable_from = str(instance.object_from)
+                value_from = copy.deepcopy(self.store.get(variable_from))
+                if isinstance(value_from, (PolarMathFunction, RegularMathFunction)):
+                    value_from.expression = evaluate_expr_to.expression
+                elif isinstance(value_from, ParametricMathFunction):
+                    value_from.expressions = evaluate_expr_to.expressions
+                self.store.add(variable_from, value_from)
             return self.process_animation(
                 Animation(
                     instance=ObjectTransform(

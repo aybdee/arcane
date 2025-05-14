@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 from lark import Transformer
 from manim.constants import PI
 from sympy import sympify
@@ -249,6 +249,9 @@ class ArcaneTransfomer(Transformer):
                 repr_string += f"{item}"
         return repr_string
 
+    def parametric_expression(self, items):
+        return list(items)
+
     def algebraic_expression(self, items):
         return f'({" ".join(items)})'
 
@@ -294,6 +297,9 @@ class ArcaneTransfomer(Transformer):
             items[0], str
         ):  # check if it's just a literal value(not function)
             return sympify(items[0])
+        elif isinstance(items[0], List):
+            return list(map(sympify, items[0]))
+
         else:
             return items[0]
 
