@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 from lark import Transformer
 from manim.constants import PI
 from sympy import sympify
@@ -15,6 +15,7 @@ from arcane.core.models.constructs import (
     Identifier,
     ArcaneLine,
     MathFunction,
+    ObjectTransformExpression,
     ParametricMathFunction,
     PolarBlock,
     PolarMathFunction,
@@ -31,6 +32,14 @@ from arcane.core.models.constructs import (
     VLines,
     ThreePoint,
     ArcaneElbow,
+    PointLength,
+    ArcaneSquare,
+    ArcaneRectangle,
+    RectangleDefinition,
+    RegularPolygonDefinition,
+    ArcaneRegularPolygon,
+    PolygonDefinition,
+    ArcanePolygon,
 )
 
 
@@ -71,7 +80,18 @@ class ArcaneTransfomer(Transformer):
                 # replace generated ID with variable name
                 item.id = name.value
                 value = item
-            elif isinstance(item, (ArcaneLine, ArcanePoint)):
+            elif isinstance(
+                item,
+                (
+                    ArcaneLine,
+                    ArcanePoint,
+                    ArcaneElbow,
+                    ArcaneSquare,
+                    ArcaneRectangle,
+                    ArcaneRegularPolygon,
+                    ArcanePolygon,
+                ),
+            ):
                 assert name is not None
                 # replace generated ID with variable name
                 item.id = name.value
@@ -205,6 +225,9 @@ class ArcaneTransfomer(Transformer):
             sweep_from=(items[0], items[1]), sweep_to=(items[2], items[3])
         )
 
+    def transform_declaration(self, items):
+        return ObjectTransformExpression(object_from=items[0], object_to=items[1])
+
     def ident_sweep(self, items):
         return SweepObjects(sweep_from=items[0].id, sweep_to=items[1].id)
 
@@ -225,6 +248,9 @@ class ArcaneTransfomer(Transformer):
             else:
                 repr_string += f"{item}"
         return repr_string
+
+    def parametric_expression(self, items):
+        return list(items)
 
     def algebraic_expression(self, items):
         return f'({" ".join(items)})'
@@ -261,27 +287,6 @@ class ArcaneTransfomer(Transformer):
     def angle_declaration(self, items):
         return ArcaneElbow(id=gen_id(), definition=items[0])
 
-    # def angle_declaration(self, items):
-    #     if len(items) == 6:  # three point angle
-    #         return ArcaneAngle(
-    #             id=gen_id(),
-    #             definition=ThreePointAngle(
-    #                 vertex=(items[0], items[1]),
-    #                 point1=(items[2], items[3]),
-    #                 point2=(items[4], items[5]),
-    #             ),
-    #         )
-    #     else:  # angle length
-    #         start_point = (items[0], items[1])
-    #         angle = float(items[2])
-    #         length = float(items[3])
-    #         return ArcaneAngle(
-    #             id=gen_id(),
-    #             definition=AngleLength(
-    #                 start_point=start_point, angle=angle, length=length
-    #             ),
-    #         )
-
     def coordinate_angle_length(self, items):
         return CoordinateAngleLength(
             sweep_from=(items[0], items[1]), angle=items[2], length=items[3]
@@ -292,6 +297,9 @@ class ArcaneTransfomer(Transformer):
             items[0], str
         ):  # check if it's just a literal value(not function)
             return sympify(items[0])
+        elif isinstance(items[0], List):
+            return list(map(sympify, items[0]))
+
         else:
             return items[0]
 
@@ -332,7 +340,7 @@ class ArcaneTransfomer(Transformer):
         return PI
 
     def E(self, _):
-        return E
+        return float(E)
 
     # process non terminal nodes
 
@@ -380,3 +388,38 @@ class ArcaneTransfomer(Transformer):
 
     def NEWLINE(self, _):
         pass
+
+    def point_length(self, items):
+        return PointLength(point=(items[0], items[1]), length=items[2])
+
+    def square_declaration(self, items):
+        return ArcaneSquare(id=gen_id(), definition=items[0])
+
+    def rectangle_declaration(self, items):
+        return ArcaneRectangle(
+            id=gen_id(),
+            definition=RectangleDefinition(
+                width=float(items[0]),
+                height=float(items[1]),
+                point=(float(items[2]), float(items[3])),
+            ),
+        )
+
+    def regular_polygon_declaration(self, items):
+        return ArcaneRegularPolygon(
+            id=gen_id(),
+            definition=RegularPolygonDefinition(
+                radius=float(items[0]),
+                num_sides=int(items[1]),
+                point=(float(items[2]), float(items[3])),
+            ),
+        )
+
+    def point_list(self, items):
+        points = []
+        for i in range(0, len(items), 2):
+            points.append((float(items[i]), float(items[i + 1])))
+        return points
+
+    def polygon_declaration(self, items):
+        return ArcanePolygon(id=gen_id(), definition=PolygonDefinition(points=items[0]))

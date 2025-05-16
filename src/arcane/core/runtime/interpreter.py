@@ -1,30 +1,30 @@
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 from enum import Enum
 from pprint import pprint
-
+import numpy as np
+import copy
+import sympy
 
 from arcane.core.models.constructs import (
     Animation,
-    ArcanePoint,
-    ArcaneElbow,
     Identifier,
     ArcaneLine,
+    MathFunction,
+    ObjectTransform,
+    ObjectTransformExpression,
     ParametricMathFunction,
     PolarMathFunction,
     RegularMathFunction,
     ArcaneText,
     SweepDot,
     SweepObjects,
+    SweepTransform,
     VLines,
+    DirectAnimatable,
 )
 
 
 from arcane.graphics.builder import SceneBuilder
-from arcane.graphics.renderers.graph import (
-    render_parametric_math_function,
-    render_polar_math_function,
-    render_regular_math_function,
-)
 
 from arcane.core.models.constructs import (
     Animation,
@@ -35,7 +35,6 @@ from arcane.core.models.constructs import (
 )
 from arcane.graphics.objects import (
     PlotContainer,
-    Plot,
 )
 
 from arcane.graphics.scene import construct_scene
@@ -47,6 +46,11 @@ from arcane.core.runtime.types import (
     InterpreterErrorCode,
 )
 from arcane.core.runtime.store import Store
+from arcane.graphics.utils.math import (
+    avoid_zero,
+    compute_function_range,
+    generate_math_function,
+)
 from arcane.utils import gen_id
 
 
@@ -68,8 +72,8 @@ class ArcaneInterpreter:
         self.animation_blocks: List[PlotContainer] = []
         self.global_container: Optional[Dict] = None
 
-    def process_expression(self, expression: Any) -> Any:
-        """Evaluates all the terms inside an expression that have stored identifiers"""
+    def evaluate_algebraic_expression(self, expression: sympy.Basic) -> Any:
+        """Evaluates all the terms inside an algebraic expression from stored identifiers"""
         variables = list(expression.free_symbols)
         evaluated_expr = expression
 
@@ -80,6 +84,113 @@ class ArcaneInterpreter:
                 evaluated_expr = evaluated_expr.subs({variable: stored_value})
 
         return evaluated_expr
+
+    def evaluate_expression(self, expression: Any) -> Any:
+        """Evaluates all the terms inside an arcane expression"""
+        # Handle parametric functions (list of expressions) separately
+        if isinstance(expression, List):
+            # Create new expressions by substituting stored values
+            new_expressions = []
+            for expr in expression:
+                if isinstance(expr, (sympy.core.add.Add, sympy.core.mul.Mul)):
+                    evaluated_expr = self.evaluate_algebraic_expression(expr)
+                    variables = list(evaluated_expr.free_symbols)
+                    stored_values = {}
+                    for variable in variables:
+                        var_name = str(variable)
+                        stored_value = self.store.get(var_name)
+                        if stored_value:
+                            stored_values.update({var_name: stored_value})
+
+                    if stored_values:
+                        # For parametric functions, all components must be parametric
+                        stored_types = list(set(map(type, stored_values.values())))
+                        if not all(
+                            isinstance(val, ParametricMathFunction)
+                            for val in stored_values.values()
+                        ):
+                            raise InterpreterError(
+                                InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
+                                expression=str(expression),
+                                error="all components must be parametric functions",
+                            )
+
+                        # Substitute each component
+                        substituted_expr = evaluated_expr
+                        for var_name, value in stored_values.items():
+                            if len(value.expressions) != len(expression):
+                                raise InterpreterError(
+                                    InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
+                                    expression=str(expression),
+                                    error="parametric functions must have same number of components",
+                                )
+                            idx = len(new_expressions)
+                            substituted_expr = substituted_expr.subs(
+                                var_name,
+                                value.expressions[idx],
+                            )
+                        new_expressions.append(substituted_expr)
+                    else:
+                        new_expressions.append(evaluated_expr)
+                else:
+                    new_expressions.append(expr)
+
+            return ParametricMathFunction(
+                id=gen_id(),
+                variables=list(map(str, new_expressions[0].free_symbols)),
+                expressions=new_expressions,
+            )
+
+        # Handle single expressions
+        if isinstance(expression, sympy.core.symbol.Symbol):
+            return self.store.get_or_throw(str(expression))
+
+        if isinstance(expression, (sympy.core.add.Add, sympy.core.mul.Mul)):
+            expression = self.evaluate_algebraic_expression(expression)
+            variables = list(expression.free_symbols)
+            stored_values = {}
+            for variable in variables:
+                var_name = str(variable)
+                stored_value = self.store.get(var_name)
+                if stored_value:
+                    stored_values.update({var_name: stored_value})
+
+            if stored_values:
+                stored_types = list(set(map(type, stored_values.values())))
+                if len(stored_types) != 1:
+                    raise InterpreterError(
+                        InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
+                        expression=str(expression),
+                        error=f"cannot combine values of type {stored_types[0].__name__} and {stored_types[1].__name__}",
+                    )
+
+                reference_value = list(stored_values.values())[0]
+                if isinstance(
+                    reference_value, (RegularMathFunction, PolarMathFunction)
+                ):
+                    for var_name in stored_values.keys():
+                        expression = expression.subs(
+                            var_name, stored_values[var_name].expression
+                        )
+
+                    if isinstance(reference_value, RegularMathFunction):
+                        return RegularMathFunction(
+                            id=gen_id(),
+                            variables=list(map(str, expression.free_symbols)),
+                            expression=expression,
+                        )
+                    else:  # PolarMathFunction
+                        return PolarMathFunction(
+                            id=gen_id(),
+                            variables=list(map(str, expression.free_symbols)),
+                            expression=expression,
+                        )
+
+        raise InterpreterError(
+            InterpreterErrorCode.UNSUPPORTED_EXPRESSION,
+            expression=str(expression),
+            error=f"cannot evaluate expression {expression}",
+        )
 
     def execute_next(self) -> InterpreterMessage:
         """Execute the next statement in the program"""
@@ -101,15 +212,14 @@ class ArcaneInterpreter:
                 current_statement, PolarBlock
             ):
                 return self._handle_plot_block(current_statement)
+
             else:
                 # Handle unsupported statement type
                 raise InterpreterError(
                     InterpreterErrorCode.UNSUPPORTED_STATEMENT,
                     statement_type=type(current_statement).__name__,
                 )
-        except InterpreterError:
-            raise
-        except Exception as e:
+        except InterpreterError as e:
             raise e
             # raise InterpreterError(InterpreterErrorCode.UNKNOWN, details=str(e)) #TODO:(uncomment)
 
@@ -121,22 +231,47 @@ class ArcaneInterpreter:
         transforms = animation.transforms
         id = id if id else gen_id()
 
-        if isinstance(instance, RegularMathFunction):
-            instance.expression = self.process_expression(instance.expression)
-            plot = render_regular_math_function(id, instance, transforms)
-            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
-
-        if isinstance(instance, PolarMathFunction):
-            instance.expression = self.process_expression(instance.expression)
-            plot = render_polar_math_function(id, instance, transforms)
-            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
+        if isinstance(instance, (RegularMathFunction, PolarMathFunction)):
+            instance.expression = self.evaluate_algebraic_expression(
+                instance.expression
+            )
+            assert isinstance(transforms[0], SweepTransform)
+            instance.x_range = (
+                avoid_zero(transforms[0].sweep_from),
+                avoid_zero(transforms[0].sweep_to),
+            )
+            instance.math_function = generate_math_function(instance)
+            instance.y_range = compute_function_range(
+                instance.math_function, instance.x_range
+            )
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
+                instance
+            )
 
         elif isinstance(instance, ParametricMathFunction):
             instance.expressions = list(
-                map(self.process_expression, instance.expressions)
+                map(self.evaluate_algebraic_expression, instance.expressions)
             )
-            plot = render_parametric_math_function(id, instance, transforms)
-            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(plot)
+            assert isinstance(transforms[0], SweepTransform)
+            instance.t_range = (
+                avoid_zero(transforms[0].sweep_from),
+                avoid_zero(transforms[0].sweep_to),
+            )
+            instance.math_function = generate_math_function(instance)
+
+            # For parametric functions, we need to compute x and y ranges separately
+            x_function = lambda t: instance.expressions[0].subs(
+                instance.variables[0], t
+            )
+            y_function = lambda t: instance.expressions[1].subs(
+                instance.variables[0], t
+            )
+            instance.x_range = compute_function_range(x_function, instance.t_range)
+            instance.y_range = compute_function_range(y_function, instance.t_range)
+
+            return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
+                instance
+            )
 
         elif isinstance(instance, Identifier):
             # Resolve the identifier and process the result
@@ -146,9 +281,32 @@ class ArcaneInterpreter:
                 instance.value,
             )
 
+        elif isinstance(instance, ObjectTransformExpression):
+            evaluate_expr_from = self.evaluate_expression(instance.object_from)
+            evaluate_expr_to = self.evaluate_expression(instance.object_to)
+            # update store with new expression
+            if self.store.get(str(instance.object_from)):
+                variable_from = str(instance.object_from)
+                value_from = copy.deepcopy(self.store.get(variable_from))
+                if isinstance(value_from, (PolarMathFunction, RegularMathFunction)):
+                    value_from.expression = evaluate_expr_to.expression
+                elif isinstance(value_from, ParametricMathFunction):
+                    value_from.expressions = evaluate_expr_to.expressions
+                self.store.add(variable_from, value_from)
+            return self.process_animation(
+                Animation(
+                    instance=ObjectTransform(
+                        id=gen_id(),
+                        object_from=evaluate_expr_from,
+                        object_to=evaluate_expr_to,
+                    ),
+                    transforms=transforms,
+                )
+            )
+
         elif isinstance(
             instance,
-            (VLines, SweepDot, ArcaneText, ArcaneLine, ArcanePoint, ArcaneElbow),
+            DirectAnimatable,
         ):
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
                 instance
@@ -173,7 +331,7 @@ class ArcaneInterpreter:
         for animation in block.animations:
             processed_animation = self.process_animation(animation)
             if processed_animation.data:
-                if isinstance(processed_animation.data, Plot):
+                if isinstance(processed_animation.data, MathFunction):
                     if processed_animation.data.container_type != expected_container:
                         InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
                 processed_animations.append(processed_animation.data)
@@ -185,7 +343,9 @@ class ArcaneInterpreter:
     def _add_object(self, obj, *, default_dep=None):
         """Helper to add an object with optional dependency logic"""
         dep = []
-        if isinstance(obj, Plot):
+        if isinstance(
+            obj, (RegularMathFunction, ParametricMathFunction, PolarMathFunction)
+        ):
             dep = [default_dep] if default_dep else []
         elif isinstance(obj, VLines):
             dep = [obj.variable]
@@ -194,6 +354,9 @@ class ArcaneInterpreter:
         elif isinstance(obj, ArcaneText):
             if obj.position:
                 dep = [obj.position.variable]
+
+        elif isinstance(obj, ObjectTransform):
+            dep = [obj.object_from.id]
 
         elif isinstance(obj, ArcaneLine):
             if isinstance(obj.definition, SweepObjects):
@@ -219,7 +382,7 @@ class ArcaneInterpreter:
                 result = self.execute_next()
                 data = result.data
 
-                if isinstance(data, Plot):
+                if isinstance(data, MathFunction):
                     container_type = data.container_type
                     global_id = (
                         "global_axis" if container_type == "Axis" else "global_polar"
@@ -233,14 +396,7 @@ class ArcaneInterpreter:
 
                 elif isinstance(
                     data,
-                    (
-                        VLines,
-                        SweepDot,
-                        ArcaneText,
-                        ArcaneLine,
-                        ArcanePoint,
-                        ArcaneElbow,
-                    ),
+                    DirectAnimatable,
                 ):
                     self._add_object(data)
 
@@ -249,8 +405,7 @@ class ArcaneInterpreter:
                     self._add_plot_block_to_builder(block, animations)
 
             except InterpreterError as e:
-                print(f"Error: {e}")
-                break
+                raise e
 
         # Render the final scene if there are any animation blocks
         if self.scene_builder.num_objects() != 0:

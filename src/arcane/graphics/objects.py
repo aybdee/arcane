@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Literal, Tuple, Protocol, Any, Optional, TypeVar
 from abc import ABC, abstractmethod
-from arcane.core.models.constructs import VLines
+from arcane.core.models.constructs import MathFunction, VLines
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from collections import OrderedDict
 from manim import *
@@ -10,25 +10,15 @@ from manim import *
 PlotContainerType = Literal["PolarPlane"] | Literal["Axis"]
 
 
-@dataclass
-class Plot:
-    id: str
-    math_function: Callable
-    container_type: PlotContainerType
-    x_range: Tuple[float, float]
-    y_range: Tuple[float, float]
-    render: Callable
-
-
 class PlotContainer:
     def __init__(self, container_type: PlotContainerType):
         self.container_type = container_type
-        self.items: List[Plot] = []
+        self.items: List[MathFunction] = []
         self.x_range = (0, 0)
         self.y_range = (0, 0)
         self.num_ticks = 5
 
-    def add(self, item: Plot):
+    def add(self, item: MathFunction):
         if len(self.items) == 0:
             self.x_range = item.x_range
             self.y_range = item.y_range
