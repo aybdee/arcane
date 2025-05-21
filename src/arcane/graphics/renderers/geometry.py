@@ -13,6 +13,7 @@ from arcane.core.models.constructs import (
     ArcaneRectangle,
     ArcaneRegularPolygon,
     ArcanePolygon,
+    ArcaneCircle,
 )
 import numpy as np
 from enum import Enum
@@ -133,10 +134,22 @@ def render_regular_polygon(polygon: ArcaneRegularPolygon):
 def render_polygon(polygon: ArcanePolygon):
     # Convert points to numpy arrays with z=0
     points = [np.array([*point, 0]) for point in polygon.definition.points]
-
+    
     polygon_mobject = Polygon(
         *points,
         color=get_random_color(),
     )
-
+    
     return polygon_mobject
+
+
+def render_circle(circle: ArcaneCircle):
+    start = np.array([*circle.definition.point, 0])
+    radius = circle.definition.radius
+    
+    circle_mobject = Circle(
+        radius=radius,
+        color=get_random_color(),
+    ).move_to(start)
+    
+    return circle_mobject

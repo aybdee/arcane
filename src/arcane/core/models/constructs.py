@@ -212,6 +212,18 @@ class ArcanePolygon:
     definition: PolygonDefinition
 
 
+@dataclass
+class CircleDefinition:
+    point: Tuple[float, float]
+    radius: float
+
+
+@dataclass
+class ArcaneCircle:
+    id: str
+    definition: CircleDefinition
+
+
 ####### end animation primitives
 
 
@@ -229,6 +241,7 @@ class Definition:
         | ArcaneRectangle
         | ArcaneRegularPolygon
         | ArcanePolygon
+        | ArcaneCircle
     )
 
 
@@ -275,8 +288,6 @@ Animatable = (
     | ArcaneRectangle
     | ArcaneRegularPolygon
     | ArcanePolygon
-    | ObjectTransform
-    | ObjectTransformExpression  # TODO:(think of way to remove expression from here)
 )
 DirectAnimatable = (
     VLines,
@@ -289,7 +300,6 @@ DirectAnimatable = (
     ArcaneRectangle,
     ArcaneRegularPolygon,
     ArcanePolygon,
-    ObjectTransform,
 )
 
 

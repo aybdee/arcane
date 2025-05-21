@@ -11,5 +11,3 @@ on axis second_axis {
   @other_equation from -2 * PI to 2 * PI
   @show 20 vertical lines on other_equation from -1 * PI to PI
 }
-
-

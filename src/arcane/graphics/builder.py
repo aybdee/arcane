@@ -1,45 +1,33 @@
 from dataclasses import dataclass
-from typing import Any, List, Optional, OrderedDict
-from arcane.core.models.constructs import (
-    ArcanePoint,
-    MathFunction,
-    ObjectTransform,
-    ParametricMathFunction,
-    PolarMathFunction,
-    RegularMathFunction,
-    SweepDot,
-    SweepObjects,
-    VLines,
-    ArcaneText,
-    ArcaneLine,
-    ArcaneElbow,
-    ArcaneSquare,
-    ArcaneRectangle,
-    ArcaneRegularPolygon,
-    ArcanePolygon,
-)
-from manim import *
-from arcane.graphics.animation import AnimationItem, AnimationPhase
-from arcane.graphics.renderers.geometry import (
-    render_line,
-    render_point,
-    render_elbow,
-    render_square,
-    render_rectangle,
-    render_regular_polygon,
-    render_polygon,
-)
-from arcane.graphics.renderers.graph import (
-    render_math_function,
-    render_sweep_dot,
-    render_vlines_to_function,
-)
-from arcane.graphics.renderers.misc import render_text
-from arcane.graphics.objects import PlotContainer
 from pprint import pprint
-import arcane.graphics.config
-from arcane.graphics.utils.math import generate_math_function
+from typing import Any, List, Optional, OrderedDict
 
+from manim import *
+
+import arcane.graphics.config
+from arcane.core.models.constructs import (ArcaneElbow, ArcaneLine,
+                                           ArcanePoint, ArcanePolygon,
+                                           ArcaneRectangle,
+                                           ArcaneRegularPolygon, ArcaneSquare,
+                                           ArcaneText, MathFunction,
+                                           ObjectTransform,
+                                           ParametricMathFunction,
+                                           PolarMathFunction,
+                                           RegularMathFunction, SweepDot,
+                                           SweepObjects, VLines,
+                                           ArcaneCircle)
+from arcane.graphics.animation import AnimationItem, AnimationPhase
+from arcane.graphics.objects import PlotContainer
+from arcane.graphics.renderers.geometry import (render_elbow, render_line,
+                                                render_point, render_polygon,
+                                                render_rectangle,
+                                                render_regular_polygon,
+                                                render_square, render_circle)
+from arcane.graphics.renderers.graph import (render_math_function,
+                                             render_sweep_dot,
+                                             render_vlines_to_function)
+from arcane.graphics.renderers.misc import render_text
+from arcane.graphics.utils.math import generate_math_function
 
 SceneObject = (
     PlotContainer
@@ -55,6 +43,7 @@ SceneObject = (
     | ArcanePolygon
     | ObjectTransform
     | MathFunction
+    | ArcaneCircle
 )
 
 
@@ -173,18 +162,21 @@ class SceneBuilder:
 
                 assert to_node.mobject is not None
 
+                line = render_line(node.value, from_node.mobject, to_node.mobject)
+                self.dependency_tree[id].mobject = line
+
                 self.animations.append(
                     AnimationItem(
-                        animation=Create(
-                            render_line(node.value, from_node.mobject, to_node.mobject)
-                        ),
+                        animation=Create(line),
                         phase=AnimationPhase.PRIMARY,
                     )
                 )
             else:
+                line = render_line(node.value)
+                self.dependency_tree[id].mobject = line
                 self.animations.append(
                     AnimationItem(
-                        animation=Create(render_line(node.value)),
+                        animation=Create(line),
                         phase=AnimationPhase.PRIMARY,
                     )
                 )
@@ -400,8 +392,17 @@ class SceneBuilder:
                 )
             )
 
-    def build(self) -> None:
+        elif isinstance(node.value, ArcaneCircle):
+            circle_mobject = render_circle(node.value)
+            node.mobject = circle_mobject
+            self.animations.append(
+                AnimationItem(
+                    animation=Create(circle_mobject),
+                    phase=AnimationPhase.PRIMARY,
+                )
+            )
 
+    def build(self) -> None:
         def get_pending_animations() -> OrderedDict[str, DependencyNode]:
             pending = OrderedDict()
 
@@ -442,6 +443,7 @@ class SceneBuilder:
                         for id, node in self.dependency_tree.items()
                         if node.mobject is None
                     ]
+                    pprint(self.dependency_tree)
                     raise ValueError(
                         f"Unable to resolve dependencies after multiple iterations. Unresolved nodes: {unresolved}"
                     )

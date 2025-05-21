@@ -1,46 +1,48 @@
 from typing import Dict, List
+
 from lark import Transformer
 from manim.constants import PI
 from sympy import sympify
 from sympy.core.numbers import E, Float
-from arcane.utils import gen_id
-
 
 from arcane.core.models.constructs import (
     Animatable,
     Animation,
+    ArcaneCircle,
+    ArcaneElbow,
+    ArcaneLine,
     ArcanePoint,
+    ArcanePolygon,
+    ArcaneRectangle,
+    ArcaneRegularPolygon,
+    ArcaneSquare,
+    ArcaneText,
+    AxisBlock,
+    CircleDefinition,
     CoordinateAngleLength,
     Definition,
     Identifier,
-    ArcaneLine,
     MathFunction,
     ObjectTransformExpression,
     ParametricMathFunction,
+    PointLength,
     PolarBlock,
     PolarMathFunction,
-    SweepCoordinates,
-    SweepDot,
+    PolygonDefinition,
     Program,
+    RectangleDefinition,
     RegularMathFunction,
+    RegularPolygonDefinition,
     RelativePosition,
     RelativePositionPlacement,
+    SweepCoordinates,
+    SweepDot,
     SweepObjects,
     SweepTransform,
-    AxisBlock,
-    ArcaneText,
-    VLines,
     ThreePoint,
-    ArcaneElbow,
-    PointLength,
-    ArcaneSquare,
-    ArcaneRectangle,
-    RectangleDefinition,
-    RegularPolygonDefinition,
-    ArcaneRegularPolygon,
-    PolygonDefinition,
-    ArcanePolygon,
+    VLines,
 )
+from arcane.utils import gen_id
 
 
 def filter_none(func):
@@ -90,6 +92,7 @@ class ArcaneTransfomer(Transformer):
                     ArcaneRectangle,
                     ArcaneRegularPolygon,
                     ArcanePolygon,
+                    ArcaneCircle,
                 ),
             ):
                 assert name is not None
@@ -418,8 +421,22 @@ class ArcaneTransfomer(Transformer):
     def point_list(self, items):
         points = []
         for i in range(0, len(items), 2):
-            points.append((float(items[i]), float(items[i + 1])))
+            points.append((float(items[i]), float(items[i+1])))
         return points
 
     def polygon_declaration(self, items):
-        return ArcanePolygon(id=gen_id(), definition=PolygonDefinition(points=items[0]))
+        return ArcanePolygon(
+            id=gen_id(),
+            definition=PolygonDefinition(
+                points=items[0]
+            )
+        )
+
+    def circle_declaration(self, items):
+        return ArcaneCircle(
+            id=gen_id(),
+            definition=CircleDefinition(
+                radius=float(items[0]),
+                point=(float(items[1]), float(items[2])),
+            ),
+        )

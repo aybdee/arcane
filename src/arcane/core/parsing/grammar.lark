@@ -1,81 +1,131 @@
-start : program
-program : statement* 
-statement : definition | animate_declaration | axis_declaration | polar_declaration  NEWLINE
-definition : "Define" IDENT "as" (expression | line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration)
-expression : math_function | algebraic_expression  | parametric_expression
+// Entry point
+start: program
+program: statement*
 
-line_declaration: "line" (sweep_coordinates | coordinate_angle_length | ident_sweep)
-point_declaration: "point at"  "("numerical_expression","numerical_expression")"
-sweep_coordinates: "from" "("NUMBER","NUMBER")" "to" "("numerical_expression","numerical_expression")"
-coordinate_angle_length:  "from" "("numerical_expression","numerical_expression")" "with angle" numerical_expression "and length" numerical_expression
-ident_sweep: "from" IDENT "to" IDENT
-point_length: "at" "("numerical_expression","numerical_expression")" "with length" numerical_expression
-transform_declaration: "transform" expression "to" expression
+// Statements
+statement: definition 
+         | animate_declaration 
+         | axis_declaration 
+         | polar_declaration 
+         NEWLINE
 
-regular_polygon_declaration: "regular polygon with radius" numerical_expression "and sides" numerical_expression "at" "("numerical_expression","numerical_expression")"
-polygon_declaration: "polygon with points" point_list
-point_list: "("numerical_expression","numerical_expression")" ("," "("numerical_expression","numerical_expression")")*
+// Definitions
+definition: "Define" IDENT "as" (
+    expression
+  | line_declaration
+  | point_declaration
+  | angle_declaration
+  | square_declaration
+  | rectangle_declaration
+  | regular_polygon_declaration
+  | polygon_declaration
+  | circle_declaration
+)
 
+// === Expressions ===
+expression: math_function 
+          | algebraic_expression  
+          | parametric_expression
 
-animate_declaration: "@" (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration)
+// === Math Functions ===
+math_function: regular_math_function 
+             | parametric_math_function 
+             | polar_math_function
 
-show_declaration: "show" vertical_line_declaration
+regular_math_function: "f" "(" IDENT ("," IDENT)* ")" "=" algebraic_expression
+polar_math_function: "polar" "(" IDENT ")" "=" algebraic_expression
+parametric_math_function: "parametric" "(" IDENT ("," IDENT)* ")" "=" "(" algebraic_expression ("," algebraic_expression)* ")"
 
-
-angle_declaration: "angle"  (three_point_angle | coordinate_angle_length)
-three_point_angle: "at" "("numerical_expression","numerical_expression")" "from" "("numerical_expression","numerical_expression")" "to" "("numerical_expression","numerical_expression")"
-
-square_declaration: "square" point_length
-
-rectangle_declaration: "rectangle with width" numerical_expression "and height" numerical_expression "at" "("numerical_expression","numerical_expression")"
-
-vertical_line_declaration: numerical_expression "vertical lines on" IDENT
-write_declaration: "write" write_value RELATIVE_POSITION IDENT ["with" font_option ("," font_option)*]
-
-write_value: STRING | latex
-latex: "latex" STRING
-
-font_option: FONT_OPTION_KEY font_option_value
-FONT_OPTION_KEY: "size" 
-font_option_value: NUMBER 
-
-
-sweep_dot: "sweep dot across"
-
-
-sweep: "from" numerical_expression "to" numerical_expression
-assign: IDENT "="  numerical_expression
-math_transform: [sweep]
-
-
-axis_declaration: "on" "axis" IDENT "{" (animate_declaration NEWLINE)* "}"
-polar_declaration: "on" "polar" IDENT "{" (animate_declaration NEWLINE)* "}"
-
-
-
-math_function: regular_math_function | parametric_math_function | polar_math_function
-regular_math_function: "f" "("(IDENT) ("," IDENT)*")" "=" algebraic_expression
-polar_math_function: "polar" "(" (IDENT) ")" "=" algebraic_expression
-parametric_math_function: "parametric" "("(IDENT) ("," IDENT)*")" "=" "(" algebraic_expression ("," algebraic_expression)* ")"
-trigonometric_function: (SIN | COS | TAN) "(" algebraic_expression ")"
-
+// === Algebraic and Numerical Expressions ===
+algebraic_expression: algebraic_term ((ADD | SUB) algebraic_term)*
+algebraic_term: algebraic_factor ((MUL | DIV | MOD) algebraic_factor)*
+algebraic_factor: algebraic_base (EXP algebraic_base)*
+algebraic_base: [SUB] (NUMBER | IDENT | NUMBER IDENT | "(" algebraic_expression ")" | trigonometric_function | constant)
 
 parametric_expression: "(" algebraic_expression ("," algebraic_expression)* ")"
-algebraic_expression : algebraic_term ((ADD | SUB) algebraic_term)*
-algebraic_term      : algebraic_factor ((MUL | DIV | MOD) algebraic_factor)*
-algebraic_factor     : algebraic_base (EXP algebraic_base)*
-algebraic_base : [SUB] (NUMBER | IDENT | NUMBER IDENT | "(" algebraic_expression ")" | trigonometric_function | constant)
 
+numerical_expression: numerical_term ((ADD | SUB) numerical_term)*
+numerical_term: numerical_factor ((MUL | DIV | MOD) numerical_factor)*
+numerical_factor: numerical_base (EXP numerical_base)*
+numerical_base: NUMBER | "(" numerical_expression ")" | constant
 
-numerical_expression : numerical_term ((ADD | SUB) numerical_term)*
-numerical_term      : numerical_factor ((MUL | DIV | MOD) numerical_factor)*
-numerical_factor     : numerical_base (EXP numerical_base)*
-numerical_base : NUMBER | "(" numerical_expression ")" | constant
+trigonometric_function: SIN "(" algebraic_expression ")" 
+                      | COS "(" algebraic_expression ")" 
+                      | TAN "(" algebraic_expression ")"
 
 constant: [SUB] (PI | E)
 
+// === Geometry Primitives ===
 
+// --- Points ---
+point_declaration: "point at" "(" numerical_expression "," numerical_expression ")"
 
+// --- Lines ---
+line_declaration: "line" (sweep_coordinates | coordinate_angle_length | ident_sweep)
+sweep_coordinates: "from" "(" NUMBER "," NUMBER ")" "to" "(" numerical_expression "," numerical_expression ")"
+coordinate_angle_length: "from" "(" numerical_expression "," numerical_expression ")" "with angle" numerical_expression "and length" numerical_expression
+ident_sweep: "from" IDENT "to" IDENT
+
+// --- Angles ---
+angle_declaration: "angle" (three_point_angle | coordinate_angle_length)
+three_point_angle: "at" "(" numerical_expression "," numerical_expression ")" "from" "(" numerical_expression "," numerical_expression ")" "to" "(" numerical_expression "," numerical_expression ")"
+
+// --- Squares & Rectangles ---
+square_declaration: "square" point_length
+point_length: "at" "(" numerical_expression "," numerical_expression ")" "with length" numerical_expression
+
+rectangle_declaration: "rectangle with width" numerical_expression "and height" numerical_expression "at" "(" numerical_expression "," numerical_expression ")"
+
+// --- Circles ---
+circle_declaration: "circle with radius" numerical_expression "at" "(" numerical_expression "," numerical_expression ")"
+
+// --- Polygons ---
+regular_polygon_declaration: "regular polygon with radius" numerical_expression "and sides" numerical_expression "at" "(" numerical_expression "," numerical_expression ")"
+polygon_declaration: "polygon with points" point_list
+point_list: "(" numerical_expression "," numerical_expression ")" ("," "(" numerical_expression "," numerical_expression ")")*
+
+// === Animation ===
+animate_declaration: "@" (
+    ((IDENT | ((IDENT | math_function | show_declaration) math_transform)) ["and" sweep_dot])
+  | write_declaration 
+  | line_declaration 
+  | point_declaration 
+  | angle_declaration 
+  | square_declaration 
+  | rectangle_declaration 
+  | regular_polygon_declaration 
+  | polygon_declaration 
+  | transform_declaration 
+  | circle_declaration
+)
+
+sweep_dot: "sweep dot across"
+math_transform: [sweep]
+sweep: "from" numerical_expression "to" numerical_expression
+
+// === Writing ===
+write_declaration: "write" write_value RELATIVE_POSITION IDENT ["with" font_option ("," font_option)*]
+write_value: STRING | latex
+latex: "latex" STRING
+font_option: FONT_OPTION_KEY font_option_value
+FONT_OPTION_KEY: "size"
+font_option_value: NUMBER
+
+// === Show ===
+show_declaration: "show" vertical_line_declaration
+vertical_line_declaration: numerical_expression "vertical lines on" IDENT
+
+// === Transforms ===
+transform_declaration: "transform" expression "to" expression
+
+// === Axes and Polar Contexts ===
+axis_declaration: "on" "axis" IDENT "{" (animate_declaration NEWLINE)* "}"
+polar_declaration: "on" "polar" IDENT "{" (animate_declaration NEWLINE)* "}"
+
+// === Assignments ===
+assign: IDENT "=" numerical_expression
+
+// === Tokens and Operators ===
 RELATIVE_POSITION: "above" | "below" | "left of" | "right of"
 MUL: "*"
 DIV: "/"
@@ -89,14 +139,11 @@ TAN: "tan"
 PI: "PI"
 E: "e"
 
-
-%import common.ESCAPED_STRING   -> STRING
-%import common.CNAME   -> IDENT
-%import common.SIGNED_NUMBER    -> NUMBER
+%import common.ESCAPED_STRING -> STRING
+%import common.CNAME -> IDENT
+%import common.SIGNED_NUMBER -> NUMBER
 %import common.WS
 %import common.NEWLINE
 
-
 %ignore WS
 %ignore NEWLINE
-
