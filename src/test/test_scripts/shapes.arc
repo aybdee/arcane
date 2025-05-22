@@ -8,7 +8,7 @@
 @angle from (0,0) with angle PI/3 and length 1
 
 @square at (0,0) with length 1
-@rectangle with width 2 and height 1 at (1,1)
+@rectangle with width 2 and height 1 below square
 
 @regular polygon with radius 1 and sides 3 at (0,0) 
 @regular polygon with radius 1 and sides 6 at (2,0)
