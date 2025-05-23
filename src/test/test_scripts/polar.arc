@@ -16,5 +16,3 @@ on axis pollinus {
 on axis pollini { 
   @f(x) = 2 * (x ^ 3) from -2 to 2 and sweep dot across
 }
-
-

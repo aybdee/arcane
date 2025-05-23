@@ -1,33 +1,37 @@
 from dataclasses import dataclass
 from pprint import pprint
-from typing import Any, List, Optional, OrderedDict
+from typing import Any, List, Optional, OrderedDict, Tuple
 
 from manim import *
 
 import arcane.graphics.config
-from arcane.core.models.constructs import (ArcaneElbow, ArcaneLine,
-                                           ArcanePoint, ArcanePolygon,
-                                           ArcaneRectangle,
+from arcane.core.models.constructs import (ArcaneCircle, ArcaneElbow,
+                                           ArcaneLine, ArcanePoint,
+                                           ArcanePolygon, ArcaneRectangle,
                                            ArcaneRegularPolygon, ArcaneSquare,
                                            ArcaneText, MathFunction,
                                            ObjectTransform,
                                            ParametricMathFunction,
-                                           PolarMathFunction,
-                                           RegularMathFunction, SweepDot,
-                                           SweepObjects, VLines,
-                                           ArcaneCircle)
+                                           PolarMathFunction, Position,
+                                           RegularMathFunction,
+                                           RelativeAnglePosition,
+                                           RelativeDirectionPosition, SweepDot,
+                                           SweepObjects, VLines)
+from arcane.core.runtime.types import InterpreterError, InterpreterErrorCode
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from arcane.graphics.objects import PlotContainer
-from arcane.graphics.renderers.geometry import (render_elbow, render_line,
-                                                render_point, render_polygon,
+from arcane.graphics.renderers.geometry import (render_circle, render_elbow,
+                                                render_line, render_point,
+                                                render_polygon,
                                                 render_rectangle,
                                                 render_regular_polygon,
-                                                render_square, render_circle)
+                                                render_square)
 from arcane.graphics.renderers.graph import (render_math_function,
                                              render_sweep_dot,
                                              render_vlines_to_function)
 from arcane.graphics.renderers.misc import render_text
-from arcane.graphics.utils.math import generate_math_function
+from arcane.graphics.utils.math import (compute_point_on_circle,
+                                        generate_math_function)
 
 SceneObject = (
     PlotContainer
@@ -54,6 +58,7 @@ class DependencyNode:
     value: SceneObject
     dependencies: List[str]
     mobject: Optional[Any] = None
+    relative_mobject: Optional[Mobject] = None
 
 
 class SceneBuilder:
@@ -71,11 +76,72 @@ class SceneBuilder:
         value: SceneObject,
         dependencies: List[str] = [],
     ) -> str:
+
+        definition = getattr(value, "definition", None)
+        position: Optional[Position] = None
+        if definition:
+            position = getattr(definition, "position", None)
+        else:
+            position = getattr(value, "position", None)
+
+        if isinstance(position, (RelativeDirectionPosition, RelativeAnglePosition)):
+            dependencies.append(position.variable)
+
         self.dependency_tree[id] = DependencyNode(
             value=value,
             dependencies=dependencies,
         )
         return id
+
+    def resolve_position(self, id: str):
+        node = self.dependency_tree[id]
+        print(node.value)
+        # check if object uses definition
+        definition = getattr(node.value, "definition", None)
+        position: Optional[Position] = None
+        if definition:
+            position = getattr(definition, "position", None)
+        else:
+            position = getattr(node.value, "position", None)
+        if position is None:
+            return
+
+        if isinstance(position, Tuple):
+            return
+        elif isinstance(position, RelativeAnglePosition):
+            relative_object_id = position.variable
+            relative_object = self.dependency_tree[relative_object_id]
+            if isinstance(relative_object.value, ArcaneCircle):
+                circle_center = relative_object.mobject.get_center()
+                point_on_circle = compute_point_on_circle(
+                    (
+                        circle_center[0],
+                        circle_center[1],
+                    ),
+                    relative_object.value.definition.radius,
+                    position.angle,
+                )
+                if definition:
+                    self.dependency_tree[
+                        id
+                    ].value.definition.position = (  # type:ignore
+                        point_on_circle
+                    )
+                else:
+                    self.dependency_tree[id].value.position = (  # type:ignore
+                        point_on_circle
+                    )
+            else:
+                raise InterpreterError(
+                    error_code=InterpreterErrorCode.UNEXPECTED_TYPE,
+                    expected="ArcaneCircle",
+                    gotten=type(relative_object.value).__name__,
+                )
+
+        elif isinstance(position, RelativeDirectionPosition):
+            relative_object_id = position.variable
+            relative_object = self.dependency_tree[relative_object_id]
+            self.dependency_tree[id].relative_mobject = relative_object.mobject
 
     def add_dependency(self, id: str, dependency: str) -> None:
         if id in self.dependency_tree:
@@ -106,6 +172,7 @@ class SceneBuilder:
 
     def resolve_dependency(self, id: str) -> None:
         node = self.get(id)
+        self.resolve_position(id)
         if node is None:
             raise ValueError(f"Dependency with ID {id} not found")
         if node.mobject:
@@ -132,7 +199,7 @@ class SceneBuilder:
             )
 
         elif isinstance(node.value, ArcanePoint):
-            mobject = render_point(node.value)
+            mobject = render_point(node.value, relative_mobject=node.relative_mobject)
             node.mobject = mobject
             self.dependency_tree[id].mobject = mobject
             for dependant_id in dependants.keys():
@@ -218,11 +285,9 @@ class SceneBuilder:
             node.mobject = to_mobject
 
         elif isinstance(node.value, ArcaneText):
-            parent_object_id = node.dependencies[0]
-            parent_object = self.dependency_tree[parent_object_id]
-
-            assert parent_object.mobject is not None
-            text_mobject = render_text(node.value, parent_object.mobject)
+            text_mobject = render_text(
+                node.value, relative_mobject=node.relative_mobject
+            )
 
             self.animations.append(
                 AnimationItem(
@@ -353,7 +418,9 @@ class SceneBuilder:
             )
 
         elif isinstance(node.value, ArcaneSquare):
-            square_mobject = render_square(node.value)
+            square_mobject = render_square(
+                node.value, relative_mobject=node.relative_mobject
+            )
             node.mobject = square_mobject
             self.animations.append(
                 AnimationItem(
@@ -363,7 +430,9 @@ class SceneBuilder:
             )
 
         elif isinstance(node.value, ArcaneRectangle):
-            rectangle_mobject = render_rectangle(node.value)
+            rectangle_mobject = render_rectangle(
+                node.value, relative_mobject=node.relative_mobject
+            )
             node.mobject = rectangle_mobject
             self.animations.append(
                 AnimationItem(
@@ -373,7 +442,9 @@ class SceneBuilder:
             )
 
         elif isinstance(node.value, ArcaneRegularPolygon):
-            polygon_mobject = render_regular_polygon(node.value)
+            polygon_mobject = render_regular_polygon(
+                node.value, relative_mobject=node.relative_mobject
+            )
             node.mobject = polygon_mobject
             self.animations.append(
                 AnimationItem(
@@ -393,7 +464,9 @@ class SceneBuilder:
             )
 
         elif isinstance(node.value, ArcaneCircle):
-            circle_mobject = render_circle(node.value)
+            circle_mobject = render_circle(
+                node.value, relative_mobject=node.relative_mobject
+            )
             node.mobject = circle_mobject
             self.animations.append(
                 AnimationItem(
@@ -443,7 +516,6 @@ class SceneBuilder:
                         for id, node in self.dependency_tree.items()
                         if node.mobject is None
                     ]
-                    pprint(self.dependency_tree)
                     raise ValueError(
                         f"Unable to resolve dependencies after multiple iterations. Unresolved nodes: {unresolved}"
                     )
@@ -451,7 +523,7 @@ class SceneBuilder:
                 iteration_count = 0
 
             # Process pending animations
-            for dependency_id in pending.keys():
-                self.resolve_dependency(dependency_id)
+            for id in pending.keys():
+                self.resolve_dependency(id)
 
             previous_pending = pending

@@ -6,6 +6,7 @@ from sympy import sympify
 from sympy.core.numbers import E, Float
 
 from arcane.core.models.constructs import (
+    AbsoluteCoordinatePosition,
     Animatable,
     Animation,
     ArcaneCircle,
@@ -25,15 +26,16 @@ from arcane.core.models.constructs import (
     MathFunction,
     ObjectTransformExpression,
     ParametricMathFunction,
-    PointLength,
     PolarBlock,
     PolarMathFunction,
     PolygonDefinition,
+    PositionLength,
     Program,
     RectangleDefinition,
     RegularMathFunction,
     RegularPolygonDefinition,
-    RelativePosition,
+    RelativeAnglePosition,
+    RelativeDirectionPosition,
     RelativePositionPlacement,
     SweepCoordinates,
     SweepDot,
@@ -67,6 +69,7 @@ def safe_get(lst, index, default=None):
 
 
 class ArcaneTransfomer(Transformer):
+    @filter_none
     def program(self, items):
         statements = list(flatten(items))
         return Program(statements)
@@ -148,11 +151,7 @@ class ArcaneTransfomer(Transformer):
         return ArcaneText(
             id=gen_id(),
             value=items[0] if not is_latex else items[0].replace("latex", ""),
-            position=(
-                RelativePosition(variable=items[2].id, placement=position[0])
-                if position
-                else None
-            ),
+            position=items[1],
             options=items[-1] if isinstance(items[-1], Dict) else {},
             is_latex=is_latex,
         )
@@ -278,13 +277,13 @@ class ArcaneTransfomer(Transformer):
         return f"{items[0]}({items[1]})"
 
     def point_declaration(self, items):
-        return ArcanePoint(id=gen_id(), position=(items[0], items[1]))
+        return ArcanePoint(id=gen_id(), position=items[0])
 
     def three_point_angle(self, items):
         return ThreePoint(
-            vertex=(items[0], items[1]),
-            point1=(items[2], items[3]),
-            point2=(items[4], items[5]),
+            position=items[0],
+            point1=(items[1], items[2]),
+            point2=(items[3], items[4]),
         )
 
     def angle_declaration(self, items):
@@ -294,6 +293,9 @@ class ArcaneTransfomer(Transformer):
         return CoordinateAngleLength(
             sweep_from=(items[0], items[1]), angle=items[2], length=items[3]
         )
+
+    def absolute_coordinate_position(self, items):
+        return tuple(items)
 
     def expression(self, items):
         if isinstance(
@@ -305,6 +307,9 @@ class ArcaneTransfomer(Transformer):
 
         else:
             return items[0]
+
+    def COMMENT(self, items):
+        pass
 
     def NUMBER(self, n):
         return float(n)
@@ -347,6 +352,7 @@ class ArcaneTransfomer(Transformer):
 
     # process non terminal nodes
 
+    @filter_none
     def statement(self, items):
         return items[0]
 
@@ -378,7 +384,7 @@ class ArcaneTransfomer(Transformer):
     def STRING(self, items):
         return str(items)[1:-1]
 
-    def RELATIVE_POSITION(self, items):
+    def RELATIVE_POSITION_DIRECTION(self, items):
         value = str(items)
         if value == "below":
             return RelativePositionPlacement.BELOW
@@ -392,8 +398,8 @@ class ArcaneTransfomer(Transformer):
     def NEWLINE(self, _):
         pass
 
-    def point_length(self, items):
-        return PointLength(point=(items[0], items[1]), length=items[2])
+    def position_length(self, items):
+        return PositionLength(position=items[1], length=items[0])
 
     def square_declaration(self, items):
         return ArcaneSquare(id=gen_id(), definition=items[0])
@@ -404,7 +410,7 @@ class ArcaneTransfomer(Transformer):
             definition=RectangleDefinition(
                 width=float(items[0]),
                 height=float(items[1]),
-                point=(float(items[2]), float(items[3])),
+                position=items[2],
             ),
         )
 
@@ -412,31 +418,30 @@ class ArcaneTransfomer(Transformer):
         return ArcaneRegularPolygon(
             id=gen_id(),
             definition=RegularPolygonDefinition(
-                radius=float(items[0]),
-                num_sides=int(items[1]),
-                point=(float(items[2]), float(items[3])),
+                radius=float(items[0]), num_sides=int(items[1]), position=items[2]
             ),
         )
+
+    def position(self, items):
+        return items[0]
+
+    def relative_direction_position(self, items):
+        return RelativeDirectionPosition(placement=items[0], variable=items[1].id)
 
     def point_list(self, items):
         points = []
         for i in range(0, len(items), 2):
-            points.append((float(items[i]), float(items[i+1])))
+            points.append((float(items[i]), float(items[i + 1])))
         return points
 
     def polygon_declaration(self, items):
-        return ArcanePolygon(
-            id=gen_id(),
-            definition=PolygonDefinition(
-                points=items[0]
-            )
-        )
+        return ArcanePolygon(id=gen_id(), definition=PolygonDefinition(points=items[0]))
+
+    def relative_angle_position(self, items):
+        return RelativeAnglePosition(variable=items[0].id, angle=float(items[1]))
 
     def circle_declaration(self, items):
         return ArcaneCircle(
             id=gen_id(),
-            definition=CircleDefinition(
-                radius=float(items[0]),
-                point=(float(items[1]), float(items[2])),
-            ),
+            definition=CircleDefinition(radius=float(items[0]), position=items[1]),
         )

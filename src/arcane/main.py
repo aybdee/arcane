@@ -7,8 +7,7 @@ from lark import Transformer
 from arcane.core.models.constructs import Program
 from arcane.core.parsing.parser import parse
 from arcane.core.parsing.transfomer import ArcaneTransfomer
-from arcane.core.runtime.interpreter import (ArcaneInterpreter,
-                                             InterpreterMessage)
+from arcane.core.runtime.interpreter import ArcaneInterpreter, InterpreterMessage
 
 if len(argv) < 2:
     print("error: arc file not supplied")
@@ -17,6 +16,7 @@ else:
         with open(argv[1], "r") as f:
             tree = parse(f.read())
             program = ArcaneTransfomer().transform(tree)
+            pprint(program)
             interpreter = ArcaneInterpreter(program)
             interpreter.run()
 

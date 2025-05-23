@@ -1,26 +1,22 @@
 from dataclasses import dataclass
-from typing import Callable, Optional, Tuple
-from manim import *
-from arcane.graphics.utils.manim import get_random_color
-from arcane.core.models.constructs import (
-    ArcaneLine,
-    ArcanePoint,
-    SweepCoordinates,
-    SweepObjects,
-    ThreePoint,
-    ArcaneElbow,
-    ArcaneSquare,
-    ArcaneRectangle,
-    ArcaneRegularPolygon,
-    ArcanePolygon,
-    ArcaneCircle,
-)
-import numpy as np
 from enum import Enum
+from typing import Callable, Optional, Tuple
+
+import numpy as np
+from manim import *
+
+from arcane.core.models.constructs import (ArcaneCircle, ArcaneElbow,
+                                           ArcaneLine, ArcanePoint,
+                                           ArcanePolygon, ArcaneRectangle,
+                                           ArcaneRegularPolygon, ArcaneSquare,
+                                           SweepCoordinates, SweepObjects,
+                                           ThreePoint)
+from arcane.graphics.utils.manim import apply_positioning, get_random_color
 
 
-def render_point(point: ArcanePoint):
-    return Dot(np.array([*point.position, 0]))
+@apply_positioning
+def render_point(point: ArcanePoint, **kwargs):
+    return Dot()
 
 
 def render_line(
@@ -55,7 +51,7 @@ def render_line(
 
 def render_elbow(elbow: ArcaneElbow):
     if isinstance(elbow.definition, ThreePoint):
-        vertex = np.array([*elbow.definition.vertex, 0])
+        vertex = np.array([*elbow.definition.position, 0])
         point1 = np.array([*elbow.definition.point1, 0])
         point2 = np.array([*elbow.definition.point2, 0])
 
@@ -90,21 +86,20 @@ def render_elbow(elbow: ArcaneElbow):
         return VGroup(actual_line, ref_line, angle_arc)
 
 
-def render_square(square: ArcaneSquare):
-    start = np.array([*square.definition.point, 0])
+@apply_positioning
+def render_square(square: ArcaneSquare, **kwargs):
     length = square.definition.length
 
     # Create square using a Rectangle with equal width and height
     square_mobject = Square(
         side_length=length,
         color=get_random_color(),
-    ).move_to(start)
-
+    )
     return square_mobject
 
 
-def render_rectangle(rectangle: ArcaneRectangle):
-    start = np.array([*rectangle.definition.point, 0])
+@apply_positioning
+def render_rectangle(rectangle: ArcaneRectangle, **kwargs):
     width = rectangle.definition.width
     height = rectangle.definition.height
 
@@ -112,13 +107,13 @@ def render_rectangle(rectangle: ArcaneRectangle):
         width=width,
         height=height,
         color=get_random_color(),
-    ).move_to(start)
+    )
 
     return rectangle_mobject
 
 
-def render_regular_polygon(polygon: ArcaneRegularPolygon):
-    start = np.array([*polygon.definition.point, 0])
+@apply_positioning
+def render_regular_polygon(polygon: ArcaneRegularPolygon, **kwargs):
     radius = polygon.definition.radius
     num_sides = polygon.definition.num_sides
 
@@ -126,7 +121,7 @@ def render_regular_polygon(polygon: ArcaneRegularPolygon):
         n=num_sides,
         radius=radius,
         color=get_random_color(),
-    ).move_to(start)
+    )
 
     return polygon_mobject
 
@@ -134,22 +129,22 @@ def render_regular_polygon(polygon: ArcaneRegularPolygon):
 def render_polygon(polygon: ArcanePolygon):
     # Convert points to numpy arrays with z=0
     points = [np.array([*point, 0]) for point in polygon.definition.points]
-    
+
     polygon_mobject = Polygon(
         *points,
         color=get_random_color(),
     )
-    
+
     return polygon_mobject
 
 
-def render_circle(circle: ArcaneCircle):
-    start = np.array([*circle.definition.point, 0])
+@apply_positioning
+def render_circle(circle: ArcaneCircle, **kwargs):
     radius = circle.definition.radius
-    
+
     circle_mobject = Circle(
         radius=radius,
         color=get_random_color(),
-    ).move_to(start)
-    
+    )
+
     return circle_mobject

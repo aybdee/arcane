@@ -1,11 +1,11 @@
 from typing import Callable, Tuple
+
 import numpy as np
-from arcane.core.models.constructs import (
-    RegularMathFunction,
-    ParametricMathFunction,
-    PolarMathFunction,
-    MathFunction
-)
+
+from arcane.core.models.constructs import (MathFunction,
+                                           ParametricMathFunction,
+                                           PolarMathFunction,
+                                           RegularMathFunction)
 
 
 def avoid_zero(num):
@@ -13,6 +13,25 @@ def avoid_zero(num):
         return 0.001
     else:
         return num
+
+
+def compute_point_on_circle(
+    center: tuple[float, float], radius: float, angle_rad: float
+) -> tuple[float, float]:
+    """
+    Calculate a point on a circle given the center, radius, and angle in degrees.
+
+    Args:
+        center: The center of the circle (x, y).
+        radius: The radius of the circle.
+        angle_rad: The angle in radians.
+
+    Returns:
+        A tuple representing the point on the circle (x, y).
+    """
+    x = center[0] + radius * np.cos(angle_rad)
+    y = center[1] + radius * np.sin(angle_rad)
+    return (x, y)
 
 
 def compute_function_range(func, value_range, num_samples=100):
@@ -26,17 +45,15 @@ def compute_function_range(func, value_range, num_samples=100):
 def generate_math_function(math_function: MathFunction) -> Callable:
     """
     Generates the callable math function for different types of math functions.
-    
+
     Args:
         math_function: The math function object to generate the callable for
-    
+
     Returns:
         Callable: The generated math function
     """
     if isinstance(math_function, (RegularMathFunction, PolarMathFunction)):
-        return lambda x: math_function.expression.subs(
-            math_function.variables[0], x
-        )
+        return lambda x: math_function.expression.subs(math_function.variables[0], x)
 
     elif isinstance(math_function, ParametricMathFunction):
         x_function = lambda t: math_function.expressions[0].subs(

@@ -1,10 +1,11 @@
 from __future__ import annotations
-from lark import ParseTree
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Any, Literal, Optional, Tuple
-from enum import Enum
-import sympy
 
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
+
+import sympy
+from lark import ParseTree
 
 ###### Primitives
 
@@ -16,10 +17,24 @@ class RelativePositionPlacement(Enum):
     BELOW = "BELOW"
 
 
+AbsoluteCoordinatePosition = Tuple[float, float]
+
+
 @dataclass
-class RelativePosition:
+class RelativeAnglePosition:
+    variable: str
+    angle: float
+
+
+@dataclass
+class RelativeDirectionPosition:
     variable: str
     placement: RelativePositionPlacement
+
+
+Position = (
+    AbsoluteCoordinatePosition | RelativeDirectionPosition | RelativeAnglePosition
+)
 
 
 @dataclass(eq=True)
@@ -133,14 +148,14 @@ class Animation:
 class ArcaneText:
     id: str
     value: str
-    position: Optional[RelativePosition]
+    position: Optional[Position]
     options: Dict = field(default_factory=dict)
     is_latex: bool = False
 
 
 @dataclass
 class ThreePoint:
-    vertex: Tuple[float, float]
+    position: Position
     point1: Tuple[float, float]
     point2: Tuple[float, float]
 
@@ -154,7 +169,7 @@ class ArcaneElbow:
 @dataclass
 class ArcanePoint:
     id: str
-    position: Tuple[float, float]
+    position: Position
 
 
 @dataclass
@@ -164,20 +179,20 @@ class ArcaneLine:
 
 
 @dataclass
-class PointLength:
-    point: Tuple[float, float]
+class PositionLength:
+    position: Position
     length: float
 
 
 @dataclass
 class ArcaneSquare:
     id: str
-    definition: PointLength
+    definition: PositionLength
 
 
 @dataclass
 class RectangleDefinition:
-    point: Tuple[float, float]
+    position: Position
     width: float
     height: float
 
@@ -190,7 +205,7 @@ class ArcaneRectangle:
 
 @dataclass
 class RegularPolygonDefinition:
-    point: Tuple[float, float]
+    position: Position
     radius: float
     num_sides: int
 
@@ -214,7 +229,7 @@ class ArcanePolygon:
 
 @dataclass
 class CircleDefinition:
-    point: Tuple[float, float]
+    position: Position
     radius: float
 
 
@@ -288,6 +303,8 @@ Animatable = (
     | ArcaneRectangle
     | ArcaneRegularPolygon
     | ArcanePolygon
+    | ArcaneCircle
+    | ObjectTransform
 )
 DirectAnimatable = (
     VLines,
@@ -300,6 +317,8 @@ DirectAnimatable = (
     ArcaneRectangle,
     ArcaneRegularPolygon,
     ArcanePolygon,
+    ArcaneCircle,
+    ObjectTransform,
 )
 
 

@@ -1,19 +1,16 @@
 from dataclasses import dataclass
-from typing import Callable, Tuple
-from manim import *
-from arcane.core.models.constructs import (
-    ArcaneText,
-    RelativePositionPlacement,
-)
-import numpy as np
 from enum import Enum
+from typing import Callable, Optional, Tuple
+
+import numpy as np
+from manim import *
+
+from arcane.core.models.constructs import ArcaneText, RelativePositionPlacement
+from arcane.graphics.utils.manim import apply_positioning
 
 
-def render_text(
-    text: ArcaneText,
-    relative_mobject: Mobject,
-):
-
+@apply_positioning
+def render_text(text: ArcaneText, **kwargs):
     if text.is_latex:
         text_mobject = Tex(
             f"${text.value}$",
@@ -32,17 +29,4 @@ def render_text(
                 else DEFAULT_FONT_SIZE
             ),  # type:ignore
         )
-    if text.position:
-        if text.position.placement == RelativePositionPlacement.ABOVE:
-            text_mobject = text_mobject.next_to(relative_mobject, UP)
-
-        elif text.position.placement == RelativePositionPlacement.BELOW:
-            text_mobject = text_mobject.next_to(relative_mobject, DOWN)
-
-        elif text.position.placement == RelativePositionPlacement.LEFT:
-            text_mobject = text_mobject.next_to(relative_mobject, LEFT)
-
-        elif text.position.placement == RelativePositionPlacement.RIGHT:
-            text_mobject = text_mobject.next_to(relative_mobject, RIGHT)
-
     return text_mobject

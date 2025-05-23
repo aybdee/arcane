@@ -1,56 +1,30 @@
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
+import copy
 from enum import Enum
 from pprint import pprint
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
+
 import numpy as np
-import copy
 import sympy
 
-from arcane.core.models.constructs import (
-    Animation,
-    Identifier,
-    ArcaneLine,
-    MathFunction,
-    ObjectTransform,
-    ObjectTransformExpression,
-    ParametricMathFunction,
-    PolarMathFunction,
-    RegularMathFunction,
-    ArcaneText,
-    SweepDot,
-    SweepObjects,
-    SweepTransform,
-    VLines,
-    DirectAnimatable,
-)
-
-
-from arcane.graphics.builder import SceneBuilder
-
-from arcane.core.models.constructs import (
-    Animation,
-    AxisBlock,
-    Definition,
-    PolarBlock,
-    Program,
-)
-from arcane.graphics.objects import (
-    PlotContainer,
-)
-
-from arcane.graphics.scene import construct_scene
-
-from arcane.core.runtime.types import (
-    InterpreterMessage,
-    InterpreterMessageType,
-    InterpreterError,
-    InterpreterErrorCode,
-)
+from arcane.core.models.constructs import (Animation, ArcaneLine, ArcaneText,
+                                           AxisBlock, Definition,
+                                           DirectAnimatable, Identifier,
+                                           MathFunction, ObjectTransform,
+                                           ObjectTransformExpression,
+                                           ParametricMathFunction, PolarBlock,
+                                           PolarMathFunction, Program,
+                                           RegularMathFunction, SweepDot,
+                                           SweepObjects, SweepTransform,
+                                           VLines)
 from arcane.core.runtime.store import Store
-from arcane.graphics.utils.math import (
-    avoid_zero,
-    compute_function_range,
-    generate_math_function,
-)
+from arcane.core.runtime.types import (InterpreterError, InterpreterErrorCode,
+                                       InterpreterMessage,
+                                       InterpreterMessageType)
+from arcane.graphics.builder import SceneBuilder
+from arcane.graphics.objects import PlotContainer
+from arcane.graphics.scene import construct_scene
+from arcane.graphics.utils.math import (avoid_zero, compute_function_range,
+                                        generate_math_function)
 from arcane.utils import gen_id
 
 
@@ -296,6 +270,7 @@ class ArcaneInterpreter:
             return self.process_animation(
                 Animation(
                     instance=ObjectTransform(
+                        # type:ignore
                         id=gen_id(),
                         object_from=evaluate_expr_from,
                         object_to=evaluate_expr_to,
@@ -351,10 +326,6 @@ class ArcaneInterpreter:
             dep = [obj.variable]
         elif isinstance(obj, SweepDot):
             dep = [obj.variable]
-        elif isinstance(obj, ArcaneText):
-            if obj.position:
-                dep = [obj.position.variable]
-
         elif isinstance(obj, ObjectTransform):
             dep = [obj.object_from.id]
 
