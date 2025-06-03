@@ -5,45 +5,29 @@ from manim.constants import PI
 from sympy import sympify
 from sympy.core.numbers import E, Float
 
-from arcane.core.models.constructs import (
-    AbsoluteCoordinatePosition,
-    Animatable,
-    Animation,
-    ArcaneCircle,
-    ArcaneElbow,
-    ArcaneLine,
-    ArcanePoint,
-    ArcanePolygon,
-    ArcaneRectangle,
-    ArcaneRegularPolygon,
-    ArcaneSquare,
-    ArcaneText,
-    AxisBlock,
-    CircleDefinition,
-    CoordinateAngleLength,
-    Definition,
-    Identifier,
-    MathFunction,
-    ObjectTransformExpression,
-    ParametricMathFunction,
-    PolarBlock,
-    PolarMathFunction,
-    PolygonDefinition,
-    PositionLength,
-    Program,
-    RectangleDefinition,
-    RegularMathFunction,
-    RegularPolygonDefinition,
-    RelativeAnglePosition,
-    RelativeDirectionPosition,
-    RelativePositionPlacement,
-    SweepCoordinates,
-    SweepDot,
-    SweepObjects,
-    SweepTransform,
-    ThreePoint,
-    VLines,
-)
+from arcane.core.models.constructs import (AbsoluteCoordinatePosition,
+                                           Animatable, Animation, ArcaneArrow,
+                                           ArcaneCircle, ArcaneElbow,
+                                           ArcaneLine, ArcanePoint,
+                                           ArcanePolygon, ArcaneRectangle,
+                                           ArcaneRegularPolygon, ArcaneSquare,
+                                           ArcaneText, AxisBlock,
+                                           CircleDefinition,
+                                           CoordinateAngleLength, Definition,
+                                           Identifier, MathFunction,
+                                           ObjectTransformExpression,
+                                           ParametricMathFunction, PolarBlock,
+                                           PolarMathFunction,
+                                           PolygonDefinition, PositionLength,
+                                           Program, RectangleDefinition,
+                                           RegularMathFunction,
+                                           RegularPolygonDefinition,
+                                           RelativeAnglePosition,
+                                           RelativeDirectionPosition,
+                                           RelativePositionPlacement,
+                                           StyleProperties, SweepCoordinates,
+                                           SweepDot, SweepObjects,
+                                           SweepTransform, ThreePoint, VLines)
 from arcane.utils import gen_id
 
 
@@ -96,6 +80,7 @@ class ArcaneTransfomer(Transformer):
                     ArcaneRegularPolygon,
                     ArcanePolygon,
                     ArcaneCircle,
+                    ArcaneArrow,
                 ),
             ):
                 assert name is not None
@@ -263,6 +248,12 @@ class ArcaneTransfomer(Transformer):
     def algebraic_term(self, items):
         return " ".join(items)
 
+    def arrow_declaration(self, items):
+        style = next(
+            (item for item in items if isinstance(item, StyleProperties)), None
+        )
+        return ArcaneArrow(id=gen_id(), definition=items[0], style=style)
+
     @filter_none
     def algebraic_base(self, items):
         repr_string = ""
@@ -402,9 +393,15 @@ class ArcaneTransfomer(Transformer):
         return PositionLength(position=items[1], length=items[0])
 
     def square_declaration(self, items):
-        return ArcaneSquare(id=gen_id(), definition=items[0])
+        style = next(
+            (item for item in items if isinstance(item, StyleProperties)), None
+        )
+        return ArcaneSquare(id=gen_id(), definition=items[0], style=style)
 
     def rectangle_declaration(self, items):
+        style = next(
+            (item for item in items if isinstance(item, StyleProperties)), None
+        )
         return ArcaneRectangle(
             id=gen_id(),
             definition=RectangleDefinition(
@@ -412,14 +409,19 @@ class ArcaneTransfomer(Transformer):
                 height=float(items[1]),
                 position=items[2],
             ),
+            style=style,
         )
 
     def regular_polygon_declaration(self, items):
+        style = next(
+            (item for item in items if isinstance(item, StyleProperties)), None
+        )
         return ArcaneRegularPolygon(
             id=gen_id(),
             definition=RegularPolygonDefinition(
                 radius=float(items[0]), num_sides=int(items[1]), position=items[2]
             ),
+            style=style,
         )
 
     def position(self, items):
@@ -435,13 +437,39 @@ class ArcaneTransfomer(Transformer):
         return points
 
     def polygon_declaration(self, items):
-        return ArcanePolygon(id=gen_id(), definition=PolygonDefinition(points=items[0]))
+        style = next(
+            (item for item in items if isinstance(item, StyleProperties)), None
+        )
+        return ArcanePolygon(
+            id=gen_id(),
+            definition=PolygonDefinition(points=items[0]),
+            style=style,
+        )
 
     def relative_angle_position(self, items):
         return RelativeAnglePosition(variable=items[0].id, angle=float(items[1]))
 
     def circle_declaration(self, items):
+        style = next(
+            (item for item in items if isinstance(item, StyleProperties)), None
+        )
         return ArcaneCircle(
             id=gen_id(),
             definition=CircleDefinition(radius=float(items[0]), position=items[1]),
+            style=style,
         )
+
+    @filter_none
+    def style_block(self, items):
+        style_dict = {}
+        for item in items:
+            style_dict.update(item)
+        return StyleProperties(**style_dict)
+
+    def style_property(self, items):
+        key = str(items[0])
+        value = str(items[1])
+        return {key: value}
+
+    def STYLE_PROPERTY_KEY(self, items):
+        return str(items)

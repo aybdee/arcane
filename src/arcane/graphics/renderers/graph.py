@@ -1,18 +1,17 @@
 from dataclasses import dataclass
 from typing import Callable, Tuple
+
 from manim import *
-from arcane.core.models.constructs import (
-    MathFunction,
-    ParametricMathFunction,
-    PolarMathFunction,
-    RegularMathFunction,
-    SweepTransform,
-    VLines,
-    Transform as ArcaneTransform,
-)
-from arcane.core.runtime.types import InterpreterError, InterpreterErrorCode
+
 import arcane.graphics.config
 import arcane.graphics.utils
+from arcane.core.models.constructs import (MathFunction,
+                                           ParametricMathFunction,
+                                           PolarMathFunction,
+                                           RegularMathFunction, SweepTransform)
+from arcane.core.models.constructs import Transform as ArcaneTransform
+from arcane.core.models.constructs import VLines
+from arcane.core.runtime.types import InterpreterError, InterpreterErrorCode
 from arcane.graphics.utils.manim import get_random_color
 
 
@@ -120,7 +119,6 @@ def render_math_function(
         if isinstance(container, PolarPlane):
             return render_polar_math_function(math_function, container, color)
         else:
-            print(type(math_function))
             raise InterpreterError(
                 InterpreterErrorCode.UNEXPECTED_TYPE,
                 expected="Polar Container",

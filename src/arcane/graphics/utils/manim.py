@@ -65,3 +65,40 @@ def apply_positioning(func):
 
 
 CoordinateSystem.clip_plot = clip_plot  # type: ignore
+
+
+def map_color_string(color_str: str) -> ManimColor:
+    """Maps string color names to Manim color constants"""
+    COLOR_MAP = {
+        # Basic colors
+        "white": WHITE,
+        "black": BLACK,
+        "red": RED,
+        "green": GREEN,
+        "blue": BLUE,
+        "yellow": YELLOW,
+        "orange": ORANGE,
+        "purple": PURPLE,
+        "pink": PINK,
+        
+        # Light variants
+        "light_gray": LIGHT_GRAY,
+        "light_brown": "#CD853F",
+        
+        # Dark variants
+        "dark_gray": DARK_GRAY,
+        "dark_blue": DARK_BLUE,
+        "dark_brown": "#8B4513",
+        
+        # Special colors
+        "teal": TEAL,
+        "maroon": "#800000",
+        "gold": GOLD,
+        "gray": GRAY,
+    }
+    
+    color_str = color_str.lower()
+    if color_str not in COLOR_MAP:
+        raise ValueError(f"Unsupported color: {color_str}. Available colors: {', '.join(COLOR_MAP.keys())}")
+    
+    return COLOR_MAP[color_str]

@@ -5,9 +5,10 @@ from typing import Any, List, Optional, OrderedDict, Tuple
 from manim import *
 
 import arcane.graphics.config
-from arcane.core.models.constructs import (ArcaneCircle, ArcaneElbow,
-                                           ArcaneLine, ArcanePoint,
-                                           ArcanePolygon, ArcaneRectangle,
+from arcane.core.models.constructs import (ArcaneArrow, ArcaneCircle,
+                                           ArcaneElbow, ArcaneLine,
+                                           ArcanePoint, ArcanePolygon,
+                                           ArcaneRectangle,
                                            ArcaneRegularPolygon, ArcaneSquare,
                                            ArcaneText, MathFunction,
                                            ObjectTransform,
@@ -20,9 +21,9 @@ from arcane.core.models.constructs import (ArcaneCircle, ArcaneElbow,
 from arcane.core.runtime.types import InterpreterError, InterpreterErrorCode
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from arcane.graphics.objects import PlotContainer
-from arcane.graphics.renderers.geometry import (render_circle, render_elbow,
-                                                render_line, render_point,
-                                                render_polygon,
+from arcane.graphics.renderers.geometry import (render_arrow, render_circle,
+                                                render_elbow, render_line,
+                                                render_point, render_polygon,
                                                 render_rectangle,
                                                 render_regular_polygon,
                                                 render_square)
@@ -48,6 +49,7 @@ SceneObject = (
     | ObjectTransform
     | MathFunction
     | ArcaneCircle
+    | ArcaneArrow
 )
 
 
@@ -95,7 +97,6 @@ class SceneBuilder:
 
     def resolve_position(self, id: str):
         node = self.dependency_tree[id]
-        print(node.value)
         # check if object uses definition
         definition = getattr(node.value, "definition", None)
         position: Optional[Position] = None
@@ -475,7 +476,41 @@ class SceneBuilder:
                 )
             )
 
+        elif isinstance(node.value, ArcaneArrow):
+            if isinstance(node.value.definition, SweepObjects):
+                from_node = self.dependency_tree[
+                    node.value.definition.sweep_from
+                ]  # type:ignore
+                to_node = self.dependency_tree[
+                    node.value.definition.sweep_to
+                ]  # type:ignore
+
+                assert from_node.mobject is not None
+
+                assert to_node.mobject is not None
+
+                line = render_arrow(node.value, from_node.mobject, to_node.mobject)
+                self.dependency_tree[id].mobject = line
+
+                self.animations.append(
+                    AnimationItem(
+                        animation=Create(line),
+                        phase=AnimationPhase.PRIMARY,
+                    )
+                )
+            else:
+                arrow_mobject = render_arrow(node.value)
+                node.mobject = arrow_mobject
+                self.animations.append(
+                    AnimationItem(
+                        animation=Create(arrow_mobject),
+                        phase=AnimationPhase.PRIMARY,
+                    )
+                )
+
     def build(self) -> None:
+        pprint(self.dependency_tree)
+
         def get_pending_animations() -> OrderedDict[str, DependencyNode]:
             pending = OrderedDict()
 

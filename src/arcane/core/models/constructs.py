@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import sympy
 from lark import ParseTree
@@ -185,9 +185,16 @@ class PositionLength:
 
 
 @dataclass
+class StyleProperties:
+    fill: Optional[str] = None
+    stroke_color: Optional[str] = None
+
+
+@dataclass
 class ArcaneSquare:
     id: str
     definition: PositionLength
+    style: Optional[StyleProperties] = None
 
 
 @dataclass
@@ -201,6 +208,7 @@ class RectangleDefinition:
 class ArcaneRectangle:
     id: str
     definition: RectangleDefinition
+    style: Optional[StyleProperties] = None
 
 
 @dataclass
@@ -214,6 +222,7 @@ class RegularPolygonDefinition:
 class ArcaneRegularPolygon:
     id: str
     definition: RegularPolygonDefinition
+    style: Optional[StyleProperties] = None
 
 
 @dataclass
@@ -225,6 +234,7 @@ class PolygonDefinition:
 class ArcanePolygon:
     id: str
     definition: PolygonDefinition
+    style: Optional[StyleProperties] = None
 
 
 @dataclass
@@ -237,6 +247,14 @@ class CircleDefinition:
 class ArcaneCircle:
     id: str
     definition: CircleDefinition
+    style: Optional[StyleProperties] = None
+
+
+@dataclass
+class ArcaneArrow:
+    id: str
+    definition: Union[SweepCoordinates, SweepObjects]
+    style: Optional[StyleProperties] = None
 
 
 ####### end animation primitives
@@ -257,6 +275,7 @@ class Definition:
         | ArcaneRegularPolygon
         | ArcanePolygon
         | ArcaneCircle
+        | ArcaneArrow
     )
 
 
@@ -304,6 +323,7 @@ Animatable = (
     | ArcaneRegularPolygon
     | ArcanePolygon
     | ArcaneCircle
+    | ArcaneArrow
     | ObjectTransform
 )
 DirectAnimatable = (
@@ -318,6 +338,7 @@ DirectAnimatable = (
     ArcaneRegularPolygon,
     ArcanePolygon,
     ArcaneCircle,
+    ArcaneArrow,
     ObjectTransform,
 )
 

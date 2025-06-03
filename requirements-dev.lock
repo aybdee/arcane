@@ -10,6 +10,8 @@
 #   universal: false
 
 -e file:.
+cffi==1.17.1
+    # via pymunk
 click==8.1.7
     # via cloup
     # via manim
@@ -26,6 +28,9 @@ isosurfaces==0.1.2
 lark==1.2.2
     # via arcane
 manim==0.18.1
+    # via arcane
+    # via manim-physics
+manim-physics==0.4.0
     # via arcane
 manimpango==0.6.0
     # via manim
@@ -53,6 +58,7 @@ numpy==1.26.4
     # via moderngl-window
     # via pyrr
     # via scipy
+    # via shapely
 packaging==24.2
     # via pytest
 pillow==11.0.0
@@ -62,6 +68,8 @@ pluggy==1.5.0
     # via pytest
 pycairo==1.27.0
     # via manim
+pycparser==2.22
+    # via cffi
 pydub==0.25.1
     # via manim
 pyglet==2.0.18
@@ -69,6 +77,8 @@ pyglet==2.0.18
 pygments==2.18.0
     # via manim
     # via rich
+pymunk==6.11.1
+    # via manim-physics
 pyrr==0.10.3
     # via moderngl-window
 pytest==8.3.5
@@ -78,6 +88,8 @@ scipy==1.14.1
     # via manim
 screeninfo==0.8.1
     # via manim
+shapely==2.1.1
+    # via manim-physics
 skia-pathops==0.8.0.post2
     # via manim
 srt==3.5.3

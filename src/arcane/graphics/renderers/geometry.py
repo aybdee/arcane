@@ -5,13 +5,15 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 from manim import *
 
-from arcane.core.models.constructs import (ArcaneCircle, ArcaneElbow,
-                                           ArcaneLine, ArcanePoint,
-                                           ArcanePolygon, ArcaneRectangle,
+from arcane.core.models.constructs import (ArcaneArrow, ArcaneCircle,
+                                           ArcaneElbow, ArcaneLine,
+                                           ArcanePoint, ArcanePolygon,
+                                           ArcaneRectangle,
                                            ArcaneRegularPolygon, ArcaneSquare,
                                            SweepCoordinates, SweepObjects,
                                            ThreePoint)
-from arcane.graphics.utils.manim import apply_positioning, get_random_color
+from arcane.graphics.utils.manim import (apply_positioning, get_random_color,
+                                         map_color_string)
 
 
 @apply_positioning
@@ -90,11 +92,19 @@ def render_elbow(elbow: ArcaneElbow):
 def render_square(square: ArcaneSquare, **kwargs):
     length = square.definition.length
 
-    # Create square using a Rectangle with equal width and height
+    stroke_color = get_random_color()
+    if square.style and square.style.stroke_color:
+        stroke_color = map_color_string(square.style.stroke_color)
+
     square_mobject = Square(
         side_length=length,
-        color=get_random_color(),
+        color=stroke_color,
     )
+
+    if square.style and square.style.fill:
+        fill = map_color_string(square.style.fill)
+        square_mobject.set_fill(fill, opacity=0.8)
+
     return square_mobject
 
 
@@ -103,11 +113,19 @@ def render_rectangle(rectangle: ArcaneRectangle, **kwargs):
     width = rectangle.definition.width
     height = rectangle.definition.height
 
+    stroke_color = get_random_color()
+    if rectangle.style and rectangle.style.stroke_color:
+        stroke_color = map_color_string(rectangle.style.stroke_color)
+
     rectangle_mobject = Rectangle(
         width=width,
         height=height,
-        color=get_random_color(),
+        color=stroke_color,
     )
+
+    if rectangle.style and rectangle.style.fill:
+        fill = map_color_string(rectangle.style.fill)
+        rectangle_mobject.set_fill(fill, opacity=0.8)
 
     return rectangle_mobject
 
@@ -117,23 +135,38 @@ def render_regular_polygon(polygon: ArcaneRegularPolygon, **kwargs):
     radius = polygon.definition.radius
     num_sides = polygon.definition.num_sides
 
+    stroke_color = get_random_color()
+    if polygon.style and polygon.style.stroke_color:
+        stroke_color = map_color_string(polygon.style.stroke_color)
+
     polygon_mobject = RegularPolygon(
         n=num_sides,
         radius=radius,
-        color=get_random_color(),
+        color=stroke_color,
     )
+
+    if polygon.style and polygon.style.fill:
+        fill = map_color_string(polygon.style.fill)
+        polygon_mobject.set_fill(fill, opacity=0.8)
 
     return polygon_mobject
 
 
 def render_polygon(polygon: ArcanePolygon):
-    # Convert points to numpy arrays with z=0
     points = [np.array([*point, 0]) for point in polygon.definition.points]
+
+    stroke_color = get_random_color()
+    if polygon.style and polygon.style.stroke_color:
+        stroke_color = map_color_string(polygon.style.stroke_color)
 
     polygon_mobject = Polygon(
         *points,
-        color=get_random_color(),
+        color=stroke_color,
     )
+
+    if polygon.style and polygon.style.fill:
+        fill = map_color_string(polygon.style.fill)
+        polygon_mobject.set_fill(fill, opacity=0.8)
 
     return polygon_mobject
 
@@ -142,9 +175,54 @@ def render_polygon(polygon: ArcanePolygon):
 def render_circle(circle: ArcaneCircle, **kwargs):
     radius = circle.definition.radius
 
+    stroke_color = get_random_color()
+    if circle.style and circle.style.stroke_color:
+        stroke_color = map_color_string(circle.style.stroke_color)
+
     circle_mobject = Circle(
         radius=radius,
-        color=get_random_color(),
+        color=stroke_color,
     )
 
+    if circle.style and circle.style.fill:
+        fill = map_color_string(circle.style.fill)
+        circle_mobject.set_fill(fill, opacity=0.8)
+
     return circle_mobject
+
+
+def render_arrow(
+    arrow: ArcaneArrow,
+    from_object: Optional[Mobject] = None,
+    to_object: Optional[Mobject] = None,
+):
+    if isinstance(arrow.definition, SweepCoordinates):
+        start = np.array(
+            [arrow.definition.sweep_from[0], arrow.definition.sweep_from[1], 0]
+        )
+        end = np.array([arrow.definition.sweep_to[0], arrow.definition.sweep_to[1], 0])
+
+    elif isinstance(arrow.definition, SweepObjects):
+        assert from_object is not None
+        assert to_object is not None
+
+        start = from_object.get_center()
+        end = to_object.get_center()
+
+    stroke_color = get_random_color()
+    if arrow.style and arrow.style.stroke_color:
+        stroke_color = map_color_string(arrow.style.stroke_color)
+
+    arrow_mobject = Arrow(
+        start=start,
+        end=end,
+        color=stroke_color,
+        buff=0.1,  # Space between arrow and points
+        max_tip_length_to_length_ratio=0.25,  # Controls arrow head size
+    )
+
+    if arrow.style and arrow.style.fill:
+        fill_color = map_color_string(arrow.style.fill)
+        arrow_mobject.set_fill(fill_color, opacity=0.8)
+
+    return arrow_mobject

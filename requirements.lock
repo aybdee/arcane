@@ -10,8 +10,8 @@
 #   universal: false
 
 -e file:.
-attrs==25.3.0
-    # via pytest
+cffi==1.17.1
+    # via pymunk
 click==8.1.7
     # via cloup
     # via manim
@@ -21,13 +21,14 @@ decorator==5.1.1
     # via manim
 glcontext==3.0.0
     # via moderngl
-iniconfig==2.1.0
-    # via pytest
 isosurfaces==0.1.2
     # via manim
 lark==1.2.2
     # via arcane
 manim==0.18.1
+    # via arcane
+    # via manim-physics
+manim-physics==0.4.0
     # via arcane
 manimpango==0.6.0
     # via manim
@@ -55,17 +56,14 @@ numpy==1.26.4
     # via moderngl-window
     # via pyrr
     # via scipy
-packaging==25.0
-    # via pytest
+    # via shapely
 pillow==11.0.0
     # via manim
     # via moderngl-window
-pluggy==1.6.0
-    # via pytest
-py==1.11.0
-    # via pytest
 pycairo==1.27.0
     # via manim
+pycparser==2.22
+    # via cffi
 pydub==0.25.1
     # via manim
 pyglet==2.0.18
@@ -73,18 +71,18 @@ pyglet==2.0.18
 pygments==2.18.0
     # via manim
     # via rich
+pymunk==6.11.1
+    # via manim-physics
 pyrr==0.10.3
     # via moderngl-window
-pytest==6.2.5
-    # via pytest-pythonpath
-pytest-pythonpath==0.7.4
-    # via arcane
 rich==13.9.4
     # via manim
 scipy==1.14.1
     # via manim
 screeninfo==0.8.1
     # via manim
+shapely==2.1.1
+    # via manim-physics
 skia-pathops==0.8.0.post2
     # via manim
 srt==3.5.3
@@ -93,8 +91,6 @@ svgelements==1.9.6
     # via manim
 sympy==1.13.3
     # via arcane
-toml==0.10.2
-    # via pytest
 tqdm==4.67.1
     # via manim
 typing-extensions==4.12.2

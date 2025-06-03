@@ -9,7 +9,7 @@ dependencies = [
     "manim>=0.18.1",
     "lark>=1.2.2",
     "sympy>=1.13.3",
-    "pytest-pythonpath>=0.7.4",
+    "manim-physics>=0.4.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
