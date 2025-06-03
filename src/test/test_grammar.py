@@ -1,12 +1,14 @@
-import pytest
 import os
-from arcane.core.parser import parse
-from arcane.core.transfomer import ArcaneTransfomer
+
+import pytest
+
+from arcane.core.parsing.parser import parse
+from arcane.core.parsing.transfomer import ArcaneTransfomer
 
 
 def get_test_scripts():
     """Helper function to get all test scripts"""
-    test_dir = "./test_scripts"
+    test_dir = os.path.join(os.path.dirname(__file__), "test_scripts")
     return [
         os.path.join(test_dir, f) for f in os.listdir(test_dir) if f.endswith(".arc")
     ]

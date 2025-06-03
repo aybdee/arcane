@@ -7,7 +7,7 @@
 @angle at (0,0) from (1,0) to (1,1)
 @angle from (0,0) with angle PI/3 and length 1
 
-@square at (0,0) with length 1
+@square with length 1 at (0,0) 
 @rectangle with width 2 and height 1 at (1,1)
 
 @regular polygon with radius 1 and sides 3 at (0,0) 
