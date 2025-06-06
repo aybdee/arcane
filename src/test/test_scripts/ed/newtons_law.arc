@@ -9,9 +9,5 @@ Define mini_circle as circle with radius 0.1 on outer_circle at angle 2*PI and s
   stroke_color: "red"
 }
 
-@outer_circle
-@inner_circle
-@mini_circle
-
 @write "m1" above mini_circle with size 20
 @write "m2" above inner_circle with size 20
