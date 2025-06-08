@@ -87,7 +87,7 @@ class SceneBuilder:
             position = getattr(value, "position", None)
 
         if isinstance(position, (RelativeDirectionPosition, RelativeAnglePosition)):
-            dependencies.append(position.variable)
+            dependencies.append(position.variable.value)
 
         self.dependency_tree[id] = DependencyNode(
             value=value,
@@ -111,7 +111,7 @@ class SceneBuilder:
             return
         elif isinstance(position, RelativeAnglePosition):
             relative_object_id = position.variable
-            relative_object = self.dependency_tree[relative_object_id]
+            relative_object = self.dependency_tree[relative_object_id.value]
             if isinstance(relative_object.value, ArcaneCircle):
                 circle_center = relative_object.mobject.get_center()
                 point_on_circle = compute_point_on_circle(
@@ -141,7 +141,7 @@ class SceneBuilder:
 
         elif isinstance(position, RelativeDirectionPosition):
             relative_object_id = position.variable
-            relative_object = self.dependency_tree[relative_object_id]
+            relative_object = self.dependency_tree[relative_object_id.value]
             self.dependency_tree[id].relative_mobject = relative_object.mobject
 
     def add_dependency(self, id: str, dependency: str) -> None:
@@ -509,7 +509,7 @@ class SceneBuilder:
                 )
 
     def build(self) -> None:
-        pprint(self.dependency_tree)
+        # pprint(self.dependency_tree)
 
         def get_pending_animations() -> OrderedDict[str, DependencyNode]:
             pending = OrderedDict()

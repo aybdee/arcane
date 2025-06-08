@@ -25,9 +25,7 @@
 Define my_point as point at (3,3)
 Define my_square as square with length 1 at (3,3) 
 Define my_rectangle as rectangle with width 2 and height 1 at (3,3)
-Define my_hexagon as regular polygon with radius 1 and sides 6 at (3,3) and style {
-  fill: "green"
-}
+Define my_hexagon as regular polygon with radius 1 and sides 7 at (3,3) 
 Define my_polygon as polygon with points (3,3), (4,3), (4,4), (3,4)
 
 # Use stored shapes

@@ -3,16 +3,16 @@ on polar pollinus {
   @polly from 0 to 2 * PI
 }
 
-on axis pollinus { 
+on axis axis_one { 
   @f(x) = x ^ 2 from -2 to 2 and sweep dot across
 }
 
 
-on axis pollinus { 
+on axis axis_two { 
   @f(x) = x ^ 2 from -2 to 2 and sweep dot across
 }
 
 
-on axis pollini { 
+on axis axis_three { 
   @f(x) = 2 * (x ^ 3) from -2 to 2 and sweep dot across
 }

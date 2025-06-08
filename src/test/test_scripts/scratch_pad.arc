@@ -1,15 +1,15 @@
-#Define simple_equation as f(x) = sin(x)
-#Define other_equation as f(x) = cos(x)
+# Define base shapes
+Define center as point at (0,0)
+Define outer_boundary as circle with radius 3 at (0,0)
+Define inner_shape as regular polygon with radius 2 and sides 6 at (0,0)
 
-#on axis first_axis {
-#  @simple_equation from -2 * PI to 2 * PI
-#  @show vertical lines on simple_equation from -1 * PI to PI
-#}
+# Create construction
+@center
+@outer_boundary
+@inner_shape
 
-
-#on axis second_axis {
-#  @other_equation from -2 * PI to 2 * PI
-#  @show vertical lines on other_equation from -1 * PI to PI
-#}
-
-
+# Add measurements and labels
+@write "Center" below center with size 16
+@write "Hexagon" above inner_shape with size 18
+# @line from center to (2,0)
+@write "r = 2" at (1,0.2) with size 14

@@ -5,8 +5,7 @@ from manim.constants import PI
 from sympy import sympify
 from sympy.core.numbers import E, Float
 
-from arcane.core.models.constructs import (AbsoluteCoordinatePosition,
-                                           Animatable, Animation, ArcaneArrow,
+from arcane.core.models.constructs import (Animatable, Animation, ArcaneArrow,
                                            ArcaneCircle, ArcaneElbow,
                                            ArcaneLine, ArcanePoint,
                                            ArcanePolygon, ArcaneRectangle,
@@ -112,14 +111,14 @@ class ArcaneTransfomer(Transformer):
                 animations.append((items[instance_index], items[instance_index + 1 :]))
 
             if isinstance(item, SweepDot) and not item.variable:
-                item.variable = animations[0][0].id
+                item.variable = animations[0][0]
 
         return list(
             map(lambda x: Animation(instance=x[0], transforms=x[1]), animations)
         )
 
     def sweep_dot(self, _):
-        return SweepDot(id=gen_id(), variable="")
+        return SweepDot(id=gen_id(), variable=Identifier())
 
     def vertical_line_declaration(self, items):
         return VLines(gen_id(), variable=items[1].id, num_lines=items[0])
@@ -428,7 +427,7 @@ class ArcaneTransfomer(Transformer):
         return items[0]
 
     def relative_direction_position(self, items):
-        return RelativeDirectionPosition(placement=items[0], variable=items[1].id)
+        return RelativeDirectionPosition(placement=items[0], variable=items[1])
 
     def point_list(self, items):
         points = []
@@ -447,7 +446,7 @@ class ArcaneTransfomer(Transformer):
         )
 
     def relative_angle_position(self, items):
-        return RelativeAnglePosition(variable=items[0].id, angle=float(items[1]))
+        return RelativeAnglePosition(variable=items[0], angle=float(items[1]))
 
     def circle_declaration(self, items):
         style = next(

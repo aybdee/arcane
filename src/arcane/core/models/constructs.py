@@ -22,13 +22,13 @@ AbsoluteCoordinatePosition = Tuple[float, float]
 
 @dataclass
 class RelativeAnglePosition:
-    variable: str
+    variable: Identifier
     angle: float
 
 
 @dataclass
 class RelativeDirectionPosition:
-    variable: str
+    variable: Identifier
     placement: RelativePositionPlacement
 
 
@@ -53,7 +53,7 @@ class Identifier:
 @dataclass
 class SweepDot:
     id: str
-    variable: str
+    variable: Identifier
 
 
 @dataclass
@@ -70,8 +70,8 @@ class SweepCoordinates:
 
 @dataclass
 class SweepObjects:
-    sweep_from: str
-    sweep_to: str
+    sweep_from: Identifier
+    sweep_to: Identifier
 
 
 @dataclass
@@ -341,6 +341,5 @@ DirectAnimatable = (
     ArcaneArrow,
     ObjectTransform,
 )
-
 
 ########### end union type definitions
