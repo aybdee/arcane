@@ -6,42 +6,25 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 import numpy as np
 import sympy
 
-from arcane.core.models.constructs import (
-    Animation,
-    ArcaneLine,
-    ArcaneText,
-    AxisBlock,
-    Definition,
-    DirectAnimatable,
-    Identifier,
-    MathFunction,
-    ObjectTransform,
-    ObjectTransformExpression,
-    ParametricMathFunction,
-    PolarBlock,
-    PolarMathFunction,
-    Program,
-    RegularMathFunction,
-    SweepDot,
-    SweepObjects,
-    SweepTransform,
-    VLines,
-)
+from arcane.core.models.constructs import (Animation, ArcaneLine, ArcaneText,
+                                           AxisBlock, Definition,
+                                           DirectAnimatable, Identifier,
+                                           MathFunction, ObjectTransform,
+                                           ObjectTransformExpression,
+                                           ParametricMathFunction, PolarBlock,
+                                           PolarMathFunction, Program,
+                                           RegularMathFunction, SweepDot,
+                                           SweepObjects, SweepTransform,
+                                           VLines)
 from arcane.core.runtime.store import Store
-from arcane.core.runtime.types import (
-    InterpreterError,
-    InterpreterErrorCode,
-    InterpreterMessage,
-    InterpreterMessageType,
-)
+from arcane.core.runtime.types import (InterpreterError, InterpreterErrorCode,
+                                       InterpreterMessage,
+                                       InterpreterMessageType)
 from arcane.graphics.builder import SceneBuilder
 from arcane.graphics.objects import PlotContainer
 from arcane.graphics.scene import construct_scene
-from arcane.graphics.utils.math import (
-    avoid_zero,
-    compute_function_range,
-    generate_math_function,
-)
+from arcane.graphics.utils.math import (avoid_zero, compute_function_range,
+                                        generate_math_function)
 from arcane.utils import gen_id
 
 
@@ -190,7 +173,8 @@ class ArcaneInterpreter:
             raise InterpreterError(InterpreterErrorCode.NO_STATEMENTS_AVAILABLE)
 
         # Get the current statement and increment the instruction pointer
-        current_statement = self.program.statements[self.instruction_pointer]
+        current_statement = self.program.statements[self.instruction_pointer].value
+        statement_index = self.program.statements[self.instruction_pointer].index
         self.instruction_pointer += 1
 
         try:
@@ -198,11 +182,11 @@ class ArcaneInterpreter:
                 self.store.add(current_statement.name.value, current_statement.value)
                 return InterpreterMessage(InterpreterMessageType.SUCCESS)
             elif isinstance(current_statement, Animation):
-                return self.process_animation(current_statement)
+                return self.process_animation(current_statement, statement_index)
             elif isinstance(current_statement, AxisBlock) or isinstance(
                 current_statement, PolarBlock
             ):
-                return self._handle_plot_block(current_statement)
+                return self._handle_plot_block(current_statement, statement_index)
 
             else:
                 # Handle unsupported statement type
@@ -215,7 +199,7 @@ class ArcaneInterpreter:
             # raise InterpreterError(InterpreterErrorCode.UNKNOWN, details=str(e)) #TODO:(uncomment)
 
     def process_animation(
-        self, animation: Animation, id: str = ""
+        self, animation: Animation, statement_index: int, id: str = ""
     ) -> InterpreterMessage:
         """Process an instance animation"""
         instance = animation.instance
@@ -236,7 +220,7 @@ class ArcaneInterpreter:
                 instance.math_function, instance.x_range
             )
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
-                instance
+                (statement_index, instance)
             )
 
         elif isinstance(instance, ParametricMathFunction):
@@ -261,7 +245,7 @@ class ArcaneInterpreter:
             instance.y_range = compute_function_range(y_function, instance.t_range)
 
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
-                instance
+                (statement_index, instance)
             )
 
         elif isinstance(instance, Identifier):
@@ -269,6 +253,7 @@ class ArcaneInterpreter:
             resolved_value = self.store.get_or_throw(instance.value)
             return self.process_animation(
                 Animation(instance=resolved_value, transforms=transforms),
+                statement_index,
                 instance.value,
             )
 
@@ -287,13 +272,13 @@ class ArcaneInterpreter:
             return self.process_animation(
                 Animation(
                     instance=ObjectTransform(
-                        # type:ignore
                         id=gen_id(),
                         object_from=evaluate_expr_from,
                         object_to=evaluate_expr_to,
                     ),
                     transforms=transforms,
-                )
+                ),
+                statement_index,
             )
 
         elif isinstance(
@@ -301,7 +286,7 @@ class ArcaneInterpreter:
             DirectAnimatable,
         ):
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
-                instance
+                (statement_index, instance)
             )
 
         else:
@@ -310,7 +295,9 @@ class ArcaneInterpreter:
                 statement_type=type(instance).__name__,
             )
 
-    def _handle_plot_block(self, block: AxisBlock | PolarBlock) -> InterpreterMessage:
+    def _handle_plot_block(
+        self, block: AxisBlock | PolarBlock, statement_index: int
+    ) -> InterpreterMessage:
         """Handle an AxisBlock or PolarBlock statement"""
         processed_animations = []
 
@@ -321,7 +308,7 @@ class ArcaneInterpreter:
             expected_container = "PolarPlane"
 
         for animation in block.animations:
-            processed_animation = self.process_animation(animation)
+            processed_animation = self.process_animation(animation, statement_index)
             if processed_animation.data:
                 if isinstance(processed_animation.data, MathFunction):
                     if processed_animation.data.container_type != expected_container:
@@ -329,10 +316,10 @@ class ArcaneInterpreter:
                 processed_animations.append(processed_animation.data)
 
         return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
-            (block, processed_animations)
+            (statement_index, (block, processed_animations))
         )
 
-    def _add_object(self, obj, *, default_dep=None):
+    def _add_object(self, obj, statement_index: int, *, default_dep=None):
         """Helper to add an object with optional dependency logic"""
         dep = []
         if isinstance(
@@ -342,7 +329,7 @@ class ArcaneInterpreter:
         elif isinstance(obj, VLines):
             dep = [obj.variable]
         elif isinstance(obj, SweepDot):
-            dep = [obj.variable]
+            dep = [obj.variable.value]
         elif isinstance(obj, ObjectTransform):
             dep = [obj.object_from.id]
 
@@ -352,45 +339,60 @@ class ArcaneInterpreter:
                 for point_id in dep:
                     if not self.scene_builder.get(point_id):
                         point = self.store.get_or_throw(point_id)
-                        self.scene_builder.add_object(id=point_id, value=point)
+                        self.scene_builder.add_object(
+                            id=point_id, value=point, statement_index=statement_index
+                        )
 
-        self.scene_builder.add_object(id=obj.id, value=obj, dependencies=dep)
+        self.scene_builder.add_object(
+            id=obj.id, value=obj, dependencies=dep, statement_index=statement_index
+        )
 
-    def _add_plot_block_to_builder(self, block: AxisBlock | PolarBlock, animations):
+    def _add_plot_block_to_builder(
+        self, statement_index: int, block: AxisBlock | PolarBlock, animations
+    ):
         container_type = "Axis" if isinstance(block, AxisBlock) else "PolarPlane"
-        self.scene_builder.add_object(id=block.id, value=PlotContainer(container_type))
+        self.scene_builder.add_object(
+            id=block.id,
+            statement_index=statement_index,
+            value=PlotContainer(container_type),
+        )
 
         for animation in animations:
-            self._add_object(animation, default_dep=block.id)
+            index, value = animation
+            self._add_object(value, index, default_dep=block.id)
 
     def run(self) -> None:
         """Run the entire program"""
         for _ in range(len(self.program.statements)):
             try:
                 result = self.execute_next()
-                data = result.data
+                if result.data:
+                    index, data = result.data
 
-                if isinstance(data, MathFunction):
-                    container_type = data.container_type
-                    global_id = (
-                        "global_axis" if container_type == "Axis" else "global_polar"
-                    )
-                    if not self.scene_builder.get(global_id):
-                        self.scene_builder.add_object(
-                            id=global_id,
-                            value=PlotContainer(container_type),
+                    if isinstance(data, MathFunction):
+                        container_type = data.container_type
+                        global_id = (
+                            "global_axis"
+                            if container_type == "Axis"
+                            else "global_polar"
                         )
-                    self._add_object(data, default_dep=global_id)
+                        if not self.scene_builder.get(global_id):
+                            self.scene_builder.add_object(
+                                id=global_id,
+                                statement_index=index,
+                                value=PlotContainer(container_type),
+                            )
+                        self._add_object(data, index, default_dep=global_id)
 
-                elif isinstance(
-                    data,
-                    DirectAnimatable,
-                ):
-                    self._add_object(data)
+                    elif isinstance(
+                        data,
+                        DirectAnimatable,
+                    ):
+                        self._add_object(data, index)
 
-                elif isinstance(data, Tuple) and len(data) == 2:
-                    block, animations = data
-                    self._add_plot_block_to_builder(block, animations)
+                    elif isinstance(data, Tuple) and len(data) == 2:
+                        block, animations = data
+                        self._add_plot_block_to_builder(index, block, animations)
 
             except InterpreterError as e:
                 raise e

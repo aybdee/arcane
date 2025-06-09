@@ -57,6 +57,7 @@ SceneObject = (
 class DependencyNode:
     """A node in the dependency tree."""
 
+    statement_index: int
     value: SceneObject
     dependencies: List[str]
     mobject: Optional[Any] = None
@@ -75,6 +76,7 @@ class SceneBuilder:
     def add_object(
         self,
         id: str,
+        statement_index: int,
         value: SceneObject,
         dependencies: List[str] = [],
     ) -> str:
@@ -91,6 +93,7 @@ class SceneBuilder:
 
         self.dependency_tree[id] = DependencyNode(
             value=value,
+            statement_index=statement_index,
             dependencies=dependencies,
         )
         return id
@@ -196,7 +199,11 @@ class SceneBuilder:
             node.mobject = plot
 
             self.animations.append(
-                AnimationItem(animation=Create(plot), phase=AnimationPhase.PRIMARY)
+                AnimationItem(
+                    node.statement_index,
+                    animation=Create(plot),
+                    phase=AnimationPhase.PRIMARY,
+                )
             )
 
         elif isinstance(node.value, ArcanePoint):
@@ -212,6 +219,7 @@ class SceneBuilder:
 
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=Create(mobject),
                     phase=AnimationPhase.PRIMARY,
                 )
@@ -235,6 +243,7 @@ class SceneBuilder:
 
                 self.animations.append(
                     AnimationItem(
+                        node.statement_index,
                         animation=Create(line),
                         phase=AnimationPhase.PRIMARY,
                     )
@@ -244,6 +253,7 @@ class SceneBuilder:
                 self.dependency_tree[id].mobject = line
                 self.animations.append(
                     AnimationItem(
+                        node.statement_index,
                         animation=Create(line),
                         phase=AnimationPhase.PRIMARY,
                     )
@@ -277,6 +287,7 @@ class SceneBuilder:
             assert isinstance(from_object.mobject, Mobject)
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=ReplacementTransform(from_object.mobject, to_mobject),
                     phase=AnimationPhase.PRIMARY,
                 )
@@ -292,6 +303,7 @@ class SceneBuilder:
 
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=Write(text_mobject),
                     phase=AnimationPhase.PRIMARY,
                     animate=True,
@@ -334,6 +346,7 @@ class SceneBuilder:
             node.mobject = lines
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=Create(lines),
                     phase=AnimationPhase.SECONDARY,
                     animate=True,
@@ -365,6 +378,7 @@ class SceneBuilder:
 
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=dot,
                     phase=AnimationPhase.SECONDARY,
                     animate=False,
@@ -373,6 +387,7 @@ class SceneBuilder:
 
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=tracker.animate.set_value(parent_plot.value.x_range[1]),
                     phase=AnimationPhase.SECONDARY,
                     config={"rate_func": linear},
@@ -400,6 +415,7 @@ class SceneBuilder:
 
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=node.mobject,
                     phase=AnimationPhase.SETUP,
                     animate=False,
@@ -413,6 +429,7 @@ class SceneBuilder:
             node.mobject = angle_mobject
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=Create(angle_mobject),
                     phase=AnimationPhase.PRIMARY,
                 )
@@ -425,6 +442,7 @@ class SceneBuilder:
             node.mobject = square_mobject
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=Create(square_mobject),
                     phase=AnimationPhase.PRIMARY,
                 )
@@ -437,6 +455,7 @@ class SceneBuilder:
             node.mobject = rectangle_mobject
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=Create(rectangle_mobject),
                     phase=AnimationPhase.PRIMARY,
                 )
@@ -449,6 +468,7 @@ class SceneBuilder:
             node.mobject = polygon_mobject
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=Create(polygon_mobject),
                     phase=AnimationPhase.PRIMARY,
                 )
@@ -459,6 +479,7 @@ class SceneBuilder:
             node.mobject = polygon_mobject
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=Create(polygon_mobject),
                     phase=AnimationPhase.PRIMARY,
                 )
@@ -471,6 +492,7 @@ class SceneBuilder:
             node.mobject = circle_mobject
             self.animations.append(
                 AnimationItem(
+                    node.statement_index,
                     animation=Create(circle_mobject),
                     phase=AnimationPhase.PRIMARY,
                 )
@@ -494,6 +516,7 @@ class SceneBuilder:
 
                 self.animations.append(
                     AnimationItem(
+                        node.statement_index,
                         animation=Create(line),
                         phase=AnimationPhase.PRIMARY,
                     )
@@ -503,6 +526,7 @@ class SceneBuilder:
                 node.mobject = arrow_mobject
                 self.animations.append(
                     AnimationItem(
+                        node.statement_index,
                         animation=Create(arrow_mobject),
                         phase=AnimationPhase.PRIMARY,
                     )

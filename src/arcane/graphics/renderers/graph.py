@@ -84,14 +84,28 @@ def render_regular_math_function(
 
 def render_sweep_dot(axes: Axes, math_function: Callable, range: Tuple[float, float]):
     t = ValueTracker(int(range[0]))
-    dot = Dot(
-        point=axes.coords_to_point(t.get_value(), math_function(t.get_value())),
-        color=WHITE,
-    )
 
-    dot.add_updater(
-        lambda x: x.move_to(axes.c2p(t.get_value(), math_function(t.get_value())))
-    )
+    test_pos = math_function(t.get_value())
+    if isinstance(test_pos, np.ndarray):
+        # if we're here then the function is a parametric function
+        x_coord, y_coord = math_function(t.get_value())
+        dot = Dot(
+            point=axes.coords_to_point(x_coord, y_coord),
+            color=WHITE,
+        )
+
+        dot.add_updater(
+            lambda mob: mob.move_to(axes.c2p(*math_function(t.get_value())))
+        )
+    else:
+        dot = Dot(
+            point=axes.coords_to_point(t.get_value(), math_function(t.get_value())),
+            color=WHITE,
+        )
+
+        dot.add_updater(
+            lambda x: x.move_to(axes.c2p(t.get_value(), math_function(t.get_value())))
+        )
     return (dot, t)
 
 

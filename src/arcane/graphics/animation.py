@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Any
-from manim import *
 from enum import Enum, auto
+from typing import Any
+
+from manim import *
 
 
 class AnimationPhase(Enum):
@@ -14,6 +15,7 @@ class AnimationPhase(Enum):
 
 @dataclass
 class AnimationItem:
+    index: int
     animation: Any  # Can be an animation or object to add
     phase: AnimationPhase
     config: Dict = field(default_factory=dict)

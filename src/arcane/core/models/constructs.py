@@ -293,7 +293,13 @@ class PolarBlock:
 
 @dataclass
 class Program:
-    statements: List[Definition | Animation]
+    statements: List[Statement]
+
+
+@dataclass
+class Statement:
+    index: int
+    value: Definition | Animation
 
 
 @dataclass

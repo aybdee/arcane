@@ -24,9 +24,10 @@ from arcane.core.models.constructs import (Animatable, Animation, ArcaneArrow,
                                            RelativeAnglePosition,
                                            RelativeDirectionPosition,
                                            RelativePositionPlacement,
-                                           StyleProperties, SweepCoordinates,
-                                           SweepDot, SweepObjects,
-                                           SweepTransform, ThreePoint, VLines)
+                                           Statement, StyleProperties,
+                                           SweepCoordinates, SweepDot,
+                                           SweepObjects, SweepTransform,
+                                           ThreePoint, VLines)
 from arcane.utils import gen_id
 
 
@@ -55,7 +56,9 @@ class ArcaneTransfomer(Transformer):
     @filter_none
     def program(self, items):
         statements = list(flatten(items))
-        return Program(statements)
+        return Program(
+            [Statement(index=i, value=item) for i, item in enumerate(statements)]
+        )
 
     def definition(self, items):
         name = None
@@ -110,8 +113,8 @@ class ArcaneTransfomer(Transformer):
             if index == len(items) - 1:
                 animations.append((items[instance_index], items[instance_index + 1 :]))
 
-            if isinstance(item, SweepDot) and not item.variable:
-                item.variable = animations[0][0]
+            if isinstance(item, SweepDot) and not item.variable.value:
+                item.variable = Identifier(animations[0][0].id)
 
         return list(
             map(lambda x: Animation(instance=x[0], transforms=x[1]), animations)

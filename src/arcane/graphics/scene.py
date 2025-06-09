@@ -1,11 +1,14 @@
-import arcane.graphics.config
 from dataclasses import dataclass
-from manim import *
-from typing import List, Callable
 from enum import Enum, auto
+from typing import Callable, List
+
+from manim import *
+
+import arcane.graphics.config
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from arcane.graphics.builder import SceneBuilder
 from arcane.graphics.layout import layout_horizontal, scale_to_fit_screen
+from arcane.utils import group_while
 
 
 def construct_scene(scene_builder: SceneBuilder):
@@ -35,7 +38,15 @@ def construct_scene(scene_builder: SceneBuilder):
                     for item in scene_builder.animations
                     if item.phase == phase and item.animate
                 ]
-                for item in items_to_animate:
-                    self.play(item.animation, **item.config)
+
+                items_to_animate = group_while(
+                    sorted(items_to_animate, key=lambda item: item.index),
+                    lambda a, b: a.index == b.index,
+                )
+                for item_group in items_to_animate:
+                    self.play(
+                        *[item.animation for item in item_group],
+                        **{k: v for item in item_group for k, v in item.config.items()},
+                    )
 
     return ArcaneScene
