@@ -7,7 +7,7 @@ start : program
 program : (statement | COMMENT)* 
 
 // Main statement types
-statement : definition | animate_declaration | axis_declaration | polar_declaration  NEWLINE
+statement : definition | animate_declaration | clear_declaration |axis_declaration | polar_declaration  NEWLINE
 
 // Variable and function definitions
 definition : "Define" IDENT "as" (expression | line_declaration | arrow_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | circle_declaration)
@@ -85,7 +85,9 @@ style_property: STYLE_PROPERTY_KEY ":" STRING
 // ==============================================================================
 
 // Animation declarations
-animate_declaration: "@" (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | arrow_declaration |line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration | circle_declaration)
+animate_declaration: "@" animatable
+animatable: (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | arrow_declaration |line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration | circle_declaration)
+clear_declaration: "clear" IDENT
 
 // Animation modifiers and effects
 sweep_dot: "sweep dot across"
@@ -177,4 +179,3 @@ COMMENT: "#" /[^\n]/*
 %ignore WS
 %ignore NEWLINE
 %ignore COMMENT
-

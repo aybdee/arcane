@@ -2,13 +2,18 @@ import re
 from dataclasses import fields, is_dataclass
 from typing import Any, Set
 
-from arcane.core.models.constructs import (Animation, Definition, Identifier,
-                                           Program, Statement)
+from arcane.core.models.constructs import (
+    Animation,
+    Definition,
+    Identifier,
+    Program,
+    Statement,
+)
 
 
 def _is_generated_id(id_str: str) -> bool:
     """Check if a string looks like a generated UUID"""
-    # TODO: come up with better way off handling this, this approach could technically cause overlap if the user decides to name a variable
+    # TODO: come up with better way off handling this, this approach could technically cause overlap if the user decides to name a variable with a uuid
     return bool(
         re.match(
             r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", id_str
@@ -49,6 +54,9 @@ def _search_for_identifiers(obj: Any, deps: Set[str]) -> None:
         deps.add(obj.value)
         return
 
+    if isinstance(obj, str):
+        pass
+
     # For dataclasses, recursively check all fields
     if is_dataclass(obj):
         for field in fields(obj):
@@ -71,11 +79,13 @@ def _get_dependencies(node) -> set[str]:
 
 
 def resolve_dependencies(ast: Program) -> Program:
-    """Resolve dependencies between objects in the AST"""
+    """Resolve dependencies between objects in the AST, updating block statement indices as needed"""
     defined_vars = _get_defined_variables(ast)
     animated_vars = set()
     new_statements = []
     next_index = 0
+    old_to_new_index = {}
+    block_statements_map = {}  # Maps block id to (block obj, old indices)
 
     # First pass: collect all variables that are already animated
     for statement in ast.statements:
@@ -86,7 +96,7 @@ def resolve_dependencies(ast: Program) -> Program:
                 animated_vars.add(statement.value.instance.id)
 
     # Second pass: process statements and inject animations where needed
-    for statement in ast.statements:
+    for old_idx, statement in enumerate(ast.statements):
         deps = _get_dependencies(statement.value)
         # For each dependency that hasn't been animated yet
         for dep in deps:
@@ -95,6 +105,7 @@ def resolve_dependencies(ast: Program) -> Program:
 
             # If dependency hasn't been animated, inject an animation
             if dep not in animated_vars:
+                print(f"Injecting animation for variable '{dep}'")
                 new_statements.append(
                     Statement(
                         index=next_index,
@@ -106,8 +117,18 @@ def resolve_dependencies(ast: Program) -> Program:
 
         # Add the original statement with updated index
         new_statements.append(Statement(index=next_index, value=statement.value))
+        old_to_new_index[old_idx] = next_index
+        # If this is a block, record its old statement indices for later update
+        if hasattr(statement.value, "statements") and hasattr(statement.value, "id"):
+            block_statements_map[statement.value.id] = (statement.value, list(getattr(statement.value, "statements", [])))
         next_index += 1
 
     # Update the AST with the new statements
     ast.statements = new_statements
+
+    # Update block statement indices to new indices
+    for block_id, (block_obj, old_indices) in block_statements_map.items():
+        new_indices = [old_to_new_index[idx] for idx in old_indices if idx in old_to_new_index]
+        block_obj.statements = new_indices
+
     return ast

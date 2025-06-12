@@ -12,7 +12,6 @@ on axis axis_two {
   @f(x) = x ^ 2 from -2 to 2 and sweep dot across
 }
 
+@square with length 1 at (0,0)
 
-on axis axis_three { 
-  @f(x) = 2 * (x ^ 3) from -2 to 2 and sweep dot across
-}
+

@@ -6,25 +6,43 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 import numpy as np
 import sympy
 
-from arcane.core.models.constructs import (Animation, ArcaneLine, ArcaneText,
-                                           AxisBlock, Definition,
-                                           DirectAnimatable, Identifier,
-                                           MathFunction, ObjectTransform,
-                                           ObjectTransformExpression,
-                                           ParametricMathFunction, PolarBlock,
-                                           PolarMathFunction, Program,
-                                           RegularMathFunction, SweepDot,
-                                           SweepObjects, SweepTransform,
-                                           VLines)
+from arcane.core.models.constructs import (
+    Animation,
+    ArcaneClearObject,
+    ArcaneLine,
+    ArcaneText,
+    AxisBlock,
+    Definition,
+    DirectAnimatable,
+    Identifier,
+    MathFunction,
+    ObjectTransform,
+    ObjectTransformExpression,
+    ParametricMathFunction,
+    PolarBlock,
+    PolarMathFunction,
+    Program,
+    RegularMathFunction,
+    SweepDot,
+    SweepObjects,
+    SweepTransform,
+    VLines,
+)
 from arcane.core.runtime.store import Store
-from arcane.core.runtime.types import (InterpreterError, InterpreterErrorCode,
-                                       InterpreterMessage,
-                                       InterpreterMessageType)
+from arcane.core.runtime.types import (
+    InterpreterError,
+    InterpreterErrorCode,
+    InterpreterMessage,
+    InterpreterMessageType,
+)
 from arcane.graphics.builder import SceneBuilder
 from arcane.graphics.objects import PlotContainer
 from arcane.graphics.scene import construct_scene
-from arcane.graphics.utils.math import (avoid_zero, compute_function_range,
-                                        generate_math_function)
+from arcane.graphics.utils.math import (
+    avoid_zero,
+    compute_function_range,
+    generate_math_function,
+)
 from arcane.utils import gen_id
 
 
@@ -166,11 +184,11 @@ class ArcaneInterpreter:
             error=f"cannot evaluate expression {expression}",
         )
 
-    def execute_next(self) -> InterpreterMessage:
+    def execute_next(self) -> Optional[InterpreterMessage]:
         """Execute the next statement in the program"""
         # Check if there are any statements left
         if self.instruction_pointer >= len(self.program.statements):
-            raise InterpreterError(InterpreterErrorCode.NO_STATEMENTS_AVAILABLE)
+            return None
 
         # Get the current statement and increment the instruction pointer
         current_statement = self.program.statements[self.instruction_pointer].value
@@ -183,10 +201,28 @@ class ArcaneInterpreter:
                 return InterpreterMessage(InterpreterMessageType.SUCCESS)
             elif isinstance(current_statement, Animation):
                 return self.process_animation(current_statement, statement_index)
-            elif isinstance(current_statement, AxisBlock) or isinstance(
-                current_statement, PolarBlock
-            ):
-                return self._handle_plot_block(current_statement, statement_index)
+            elif isinstance(current_statement, (AxisBlock, PolarBlock)):
+                plot_values = self._handle_plot_block(
+                    current_statement, statement_index
+                )
+                self.instruction_pointer += len(current_statement.statements)
+                return plot_values
+
+            elif isinstance(current_statement, ArcaneClearObject):
+                # check if the object iss in the scene builder
+                if self.scene_builder.get(current_statement.variable.id):
+                    self.scene_builder.add_object(
+                        id=current_statement.id,
+                        value=current_statement,
+                        statement_index=statement_index,
+                        dependencies=[current_statement.variable.id],
+                    )
+                    return InterpreterMessage(InterpreterMessageType.SUCCESS)
+                else:
+                    raise InterpreterError(
+                        InterpreterErrorCode.NOT_ANIMATED_CANNOT_CLEAR,
+                        variable_name=current_statement.id,
+                    )
 
             else:
                 # Handle unsupported statement type
@@ -295,6 +331,14 @@ class ArcaneInterpreter:
                 statement_type=type(instance).__name__,
             )
 
+    def get_statement_by_index(self, index: int) -> Any:
+        """Get a statement by its index"""
+        if index < 0 or index >= len(self.program.statements):
+            raise IndexError("Statement index out of range")
+        for statement in self.program.statements:
+            if statement.index == index:
+                return statement.value
+
     def _handle_plot_block(
         self, block: AxisBlock | PolarBlock, statement_index: int
     ) -> InterpreterMessage:
@@ -307,8 +351,15 @@ class ArcaneInterpreter:
         elif isinstance(block, PolarBlock):
             expected_container = "PolarPlane"
 
-        for animation in block.animations:
-            processed_animation = self.process_animation(animation, statement_index)
+        for index in block.statements:
+            current_statement = self.program.statements[index].value
+            if not isinstance(current_statement, Animation):
+                raise InterpreterError(
+                    InterpreterErrorCode.ONLY_TYPE_ALLOWED_BLOCK,
+                    allowed_type="Animation",
+                    gotten_type=type(current_statement).__name__,
+                )
+            processed_animation = self.process_animation(current_statement, index)
             if processed_animation.data:
                 if isinstance(processed_animation.data, MathFunction):
                     if processed_animation.data.container_type != expected_container:
@@ -363,9 +414,11 @@ class ArcaneInterpreter:
 
     def run(self) -> None:
         """Run the entire program"""
-        for _ in range(len(self.program.statements)):
+        while True:
             try:
                 result = self.execute_next()
+                if not result:
+                    break
                 if result.data:
                     index, data = result.data
 

@@ -19,6 +19,7 @@ else:
             program = ArcaneTransfomer().transform(tree)
             # pprint(program)
             program = resolve_dependencies(program)
+            # pprint(program)
             interpreter = ArcaneInterpreter(program)
             interpreter.run()
     else:

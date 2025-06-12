@@ -5,29 +5,48 @@ from manim.constants import PI
 from sympy import sympify
 from sympy.core.numbers import E, Float
 
-from arcane.core.models.constructs import (Animatable, Animation, ArcaneArrow,
-                                           ArcaneCircle, ArcaneElbow,
-                                           ArcaneLine, ArcanePoint,
-                                           ArcanePolygon, ArcaneRectangle,
-                                           ArcaneRegularPolygon, ArcaneSquare,
-                                           ArcaneText, AxisBlock,
-                                           CircleDefinition,
-                                           CoordinateAngleLength, Definition,
-                                           Identifier, MathFunction,
-                                           ObjectTransformExpression,
-                                           ParametricMathFunction, PolarBlock,
-                                           PolarMathFunction,
-                                           PolygonDefinition, PositionLength,
-                                           Program, RectangleDefinition,
-                                           RegularMathFunction,
-                                           RegularPolygonDefinition,
-                                           RelativeAnglePosition,
-                                           RelativeDirectionPosition,
-                                           RelativePositionPlacement,
-                                           Statement, StyleProperties,
-                                           SweepCoordinates, SweepDot,
-                                           SweepObjects, SweepTransform,
-                                           ThreePoint, VLines)
+from arcane.core.models.constructs import (
+    Animatable,
+    Animation,
+    ArcaneArrow,
+    ArcaneCircle,
+    ArcaneClearObject,
+    ArcaneElbow,
+    ArcaneLine,
+    ArcanePoint,
+    ArcanePolygon,
+    ArcaneRectangle,
+    ArcaneRegularPolygon,
+    ArcaneSquare,
+    ArcaneText,
+    AxisBlock,
+    CircleDefinition,
+    CoordinateAngleLength,
+    Definition,
+    Identifier,
+    MathFunction,
+    ObjectTransformExpression,
+    ParametricMathFunction,
+    PolarBlock,
+    PolarMathFunction,
+    PolygonDefinition,
+    PositionLength,
+    Program,
+    RectangleDefinition,
+    RegularMathFunction,
+    RegularPolygonDefinition,
+    RelativeAnglePosition,
+    RelativeDirectionPosition,
+    RelativePositionPlacement,
+    Statement,
+    StyleProperties,
+    SweepCoordinates,
+    SweepDot,
+    SweepObjects,
+    SweepTransform,
+    ThreePoint,
+    VLines,
+)
 from arcane.utils import gen_id
 
 
@@ -55,9 +74,31 @@ def safe_get(lst, index, default=None):
 class ArcaneTransfomer(Transformer):
     @filter_none
     def program(self, items):
-        statements = list(flatten(items))
+        statement_pieces = list(flatten(items))
+        statements = []
+        statement_index = 0
+        for current_statement in statement_pieces:
+            if isinstance(current_statement, (AxisBlock, PolarBlock)):
+                statement_indices = []
+                block_index = statement_index
+                for statement in current_statement._statements:
+                    print(block_index)
+                    statement_index += 1
+                    statements.append(Statement(index=statement_index, value=statement))
+                    statement_indices.append(statement_index)
+                current_statement.statements = statement_indices
+                current_statement._statements = []
+                statements.append(Statement(index=block_index, value=current_statement))
+
+            else:
+                statements.append(
+                    Statement(index=statement_index, value=current_statement)
+                )
+
+            statement_index += 1
+        statements.sort(key=lambda x: x.index)
         return Program(
-            [Statement(index=i, value=item) for i, item in enumerate(statements)]
+            statements=statements,
         )
 
     def definition(self, items):
@@ -99,7 +140,11 @@ class ArcaneTransfomer(Transformer):
         assert value is not None
         return Definition(name, value)
 
+    def clear_declaration(self, items):
+        return ArcaneClearObject(id=gen_id(), variable=items[0])
+
     def animate_declaration(self, items):
+        items = items[0]  # unwrap from animatable
         items = list(filter(lambda x: x != None, items))
         animations = []
         instance_index = 0
@@ -162,7 +207,7 @@ class ArcaneTransfomer(Transformer):
             else:
                 animations.append(item)
         assert identifier is not None
-        return PolarBlock(id=identifier.id, animations=list(flatten(animations)))
+        return PolarBlock(id=identifier.id, _statements=list(flatten(animations)))
 
     @filter_none
     def axis_declaration(self, items):
@@ -174,7 +219,7 @@ class ArcaneTransfomer(Transformer):
             else:
                 animations.append(item)
         assert identifier is not None
-        return AxisBlock(id=identifier.id, animations=list(flatten(animations)))
+        return AxisBlock(id=identifier.id, _statements=list(flatten(animations)))
 
     def regular_math_function(self, items):
         variables = []
@@ -218,7 +263,7 @@ class ArcaneTransfomer(Transformer):
         return ObjectTransformExpression(object_from=items[0], object_to=items[1])
 
     def ident_sweep(self, items):
-        return SweepObjects(sweep_from=items[0].id, sweep_to=items[1].id)
+        return SweepObjects(sweep_from=items[0], sweep_to=items[1])
 
     def numerical_expression(self, items):
         return float(sympify(" ".join(items)))
@@ -460,6 +505,9 @@ class ArcaneTransfomer(Transformer):
             definition=CircleDefinition(radius=float(items[0]), position=items[1]),
             style=style,
         )
+
+    def animatable(self, items):
+        return items
 
     @filter_none
     def style_block(self, items):

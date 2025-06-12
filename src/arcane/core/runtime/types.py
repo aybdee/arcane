@@ -11,6 +11,12 @@ class InterpreterErrorCode(Enum):
     ANIMATION_ERROR = "Error during animation: {details}"
     UNSUPPORTED_EXPRESSION = "Error evaluating expression {expression}: {error}"
     UNEXPECTED_TYPE = "Expected value of type {expected} got {gotten}"
+    ONLY_TYPE_ALLOWED_BLOCK = (
+        "Only {allowed_type} type allowed in this block, got {gotten_type}"
+    )
+    NOT_ANIMATED_CANNOT_CLEAR = (
+        "Variable '{variable_name}' is not animated, cannot clear"
+    )
 
 
 class InterpreterError(Exception):

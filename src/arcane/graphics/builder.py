@@ -5,34 +5,51 @@ from typing import Any, List, Optional, OrderedDict, Tuple
 from manim import *
 
 import arcane.graphics.config
-from arcane.core.models.constructs import (ArcaneArrow, ArcaneCircle,
-                                           ArcaneElbow, ArcaneLine,
-                                           ArcanePoint, ArcanePolygon,
-                                           ArcaneRectangle,
-                                           ArcaneRegularPolygon, ArcaneSquare,
-                                           ArcaneText, MathFunction,
-                                           ObjectTransform,
-                                           ParametricMathFunction,
-                                           PolarMathFunction, Position,
-                                           RegularMathFunction,
-                                           RelativeAnglePosition,
-                                           RelativeDirectionPosition, SweepDot,
-                                           SweepObjects, VLines)
+from arcane.core.models.constructs import (
+    ArcaneArrow,
+    ArcaneCircle,
+    ArcaneClearObject,
+    ArcaneElbow,
+    ArcaneLine,
+    ArcanePoint,
+    ArcanePolygon,
+    ArcaneRectangle,
+    ArcaneRegularPolygon,
+    ArcaneSquare,
+    ArcaneText,
+    MathFunction,
+    ObjectTransform,
+    ParametricMathFunction,
+    PolarMathFunction,
+    Position,
+    RegularMathFunction,
+    RelativeAnglePosition,
+    RelativeDirectionPosition,
+    SweepDot,
+    SweepObjects,
+    VLines,
+)
 from arcane.core.runtime.types import InterpreterError, InterpreterErrorCode
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from arcane.graphics.objects import PlotContainer
-from arcane.graphics.renderers.geometry import (render_arrow, render_circle,
-                                                render_elbow, render_line,
-                                                render_point, render_polygon,
-                                                render_rectangle,
-                                                render_regular_polygon,
-                                                render_square)
-from arcane.graphics.renderers.graph import (render_math_function,
-                                             render_sweep_dot,
-                                             render_vlines_to_function)
+from arcane.graphics.renderers.geometry import (
+    render_arrow,
+    render_circle,
+    render_elbow,
+    render_line,
+    render_point,
+    render_polygon,
+    render_rectangle,
+    render_regular_polygon,
+    render_square,
+)
+from arcane.graphics.renderers.graph import (
+    render_math_function,
+    render_sweep_dot,
+    render_vlines_to_function,
+)
 from arcane.graphics.renderers.misc import render_text
-from arcane.graphics.utils.math import (compute_point_on_circle,
-                                        generate_math_function)
+from arcane.graphics.utils.math import compute_point_on_circle, generate_math_function
 
 SceneObject = (
     PlotContainer
@@ -50,6 +67,7 @@ SceneObject = (
     | MathFunction
     | ArcaneCircle
     | ArcaneArrow
+    | ArcaneClearObject
 )
 
 
@@ -224,6 +242,19 @@ class SceneBuilder:
                     phase=AnimationPhase.PRIMARY,
                 )
             )
+
+        elif isinstance(node.value, ArcaneClearObject):
+            obj_to_clear_id = node.dependencies[0]
+            obj_to_clear = self.dependency_tree[obj_to_clear_id]
+            assert obj_to_clear.mobject is not None
+            self.animations.append(
+                AnimationItem(
+                    node.statement_index,
+                    animation=FadeOut(obj_to_clear.mobject),
+                    phase=AnimationPhase.PRIMARY,
+                )
+            )
+            node.mobject = True
 
         elif isinstance(node.value, ArcaneLine):
             if isinstance(node.value.definition, SweepObjects):
@@ -501,10 +532,10 @@ class SceneBuilder:
         elif isinstance(node.value, ArcaneArrow):
             if isinstance(node.value.definition, SweepObjects):
                 from_node = self.dependency_tree[
-                    node.value.definition.sweep_from
+                    node.value.definition.sweep_from.value
                 ]  # type:ignore
                 to_node = self.dependency_tree[
-                    node.value.definition.sweep_to
+                    node.value.definition.sweep_to.value
                 ]  # type:ignore
 
                 assert from_node.mobject is not None

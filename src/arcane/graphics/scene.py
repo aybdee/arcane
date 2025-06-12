@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from enum import Enum, auto
+from pprint import pprint
 from typing import Callable, List
 
 from manim import *
+from manim_physics import SpaceScene
 
 import arcane.graphics.config
 from arcane.graphics.animation import AnimationItem, AnimationPhase
@@ -12,7 +14,7 @@ from arcane.utils import group_while
 
 
 def construct_scene(scene_builder: SceneBuilder):
-    class ArcaneScene(Scene):
+    class ArcaneScene(SpaceScene):
         def construct(self):
 
             scene_builder.build()
@@ -43,6 +45,7 @@ def construct_scene(scene_builder: SceneBuilder):
                     sorted(items_to_animate, key=lambda item: item.index),
                     lambda a, b: a.index == b.index,
                 )
+
                 for item_group in items_to_animate:
                     self.play(
                         *[item.animation for item in item_group],

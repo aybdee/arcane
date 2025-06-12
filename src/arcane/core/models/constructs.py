@@ -154,6 +154,12 @@ class ArcaneText:
 
 
 @dataclass
+class ArcaneClearObject:
+    id: str
+    variable: Identifier
+
+
+@dataclass
 class ThreePoint:
     position: Position
     point1: Tuple[float, float]
@@ -282,13 +288,15 @@ class Definition:
 @dataclass
 class AxisBlock:
     id: str
-    animations: List[Animation]
+    _statements: List[any]
+    statements: List[int] = field(default_factory=list)
 
 
 @dataclass
 class PolarBlock:
     id: str
-    animations: List[Animation]
+    _statements: List[any]
+    statements: List[int] = field(default_factory=list)
 
 
 @dataclass
@@ -299,7 +307,7 @@ class Program:
 @dataclass
 class Statement:
     index: int
-    value: Definition | Animation
+    value: Definition | Animation | AxisBlock | PolarBlock | ArcaneClearObject
 
 
 @dataclass

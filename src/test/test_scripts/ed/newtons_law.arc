@@ -11,3 +11,4 @@ Define mini_circle as circle with radius 0.1 on outer_circle at angle 2*PI and s
 
 @write "m1" above mini_circle with size 20
 @write "m2" above inner_circle with size 20
+clear mini_circle
