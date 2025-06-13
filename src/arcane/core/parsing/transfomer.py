@@ -5,48 +5,31 @@ from manim.constants import PI
 from sympy import sympify
 from sympy.core.numbers import E, Float
 
-from arcane.core.models.constructs import (
-    Animatable,
-    Animation,
-    ArcaneArrow,
-    ArcaneCircle,
-    ArcaneClearObject,
-    ArcaneElbow,
-    ArcaneLine,
-    ArcanePoint,
-    ArcanePolygon,
-    ArcaneRectangle,
-    ArcaneRegularPolygon,
-    ArcaneSquare,
-    ArcaneText,
-    AxisBlock,
-    CircleDefinition,
-    CoordinateAngleLength,
-    Definition,
-    Identifier,
-    MathFunction,
-    ObjectTransformExpression,
-    ParametricMathFunction,
-    PolarBlock,
-    PolarMathFunction,
-    PolygonDefinition,
-    PositionLength,
-    Program,
-    RectangleDefinition,
-    RegularMathFunction,
-    RegularPolygonDefinition,
-    RelativeAnglePosition,
-    RelativeDirectionPosition,
-    RelativePositionPlacement,
-    Statement,
-    StyleProperties,
-    SweepCoordinates,
-    SweepDot,
-    SweepObjects,
-    SweepTransform,
-    ThreePoint,
-    VLines,
-)
+from arcane.core.models.constructs import (Animatable, Animation, ArcaneArrow,
+                                           ArcaneCircle, ArcaneClearObject,
+                                           ArcaneElbow, ArcaneLens, ArcaneLine,
+                                           ArcanePoint, ArcanePolygon,
+                                           ArcaneRays, ArcaneRectangle,
+                                           ArcaneRegularPolygon, ArcaneSquare,
+                                           ArcaneText, AxisBlock,
+                                           CircleDefinition,
+                                           CoordinateAngleLength, Definition,
+                                           Direction, Identifier, MathFunction,
+                                           ObjectTransformExpression,
+                                           ParametricMathFunction, PolarBlock,
+                                           PolarMathFunction,
+                                           PolygonDefinition, PositionLength,
+                                           Program, PropagateRays,
+                                           RectangleDefinition,
+                                           RegularMathFunction,
+                                           RegularPolygonDefinition,
+                                           RelativeAnglePosition,
+                                           RelativeDirectionPosition,
+                                           RelativePositionPlacement,
+                                           Statement, StyleProperties,
+                                           SweepCoordinates, SweepDot,
+                                           SweepObjects, SweepTransform,
+                                           ThreePoint, VLines)
 from arcane.utils import gen_id
 
 
@@ -124,6 +107,8 @@ class ArcaneTransfomer(Transformer):
                     ArcanePolygon,
                     ArcaneCircle,
                     ArcaneArrow,
+                    ArcaneLens,
+                    ArcaneRays,
                 ),
             ):
                 assert name is not None
@@ -495,6 +480,35 @@ class ArcaneTransfomer(Transformer):
 
     def relative_angle_position(self, items):
         return RelativeAnglePosition(variable=items[0], angle=float(items[1]))
+
+    def lens_declaration(self, items):
+        style = next(
+            (item for item in items if isinstance(item, StyleProperties)), None
+        )
+        return ArcaneLens(
+            id=gen_id(),
+            focal_length=int(items[0]),
+            thickness=int(items[1]),
+            position=items[2],
+            style=style,
+        )
+
+    def DIRECTION(self, items):
+        return Direction(items)
+
+    def propagate_rays(self, items):
+        return PropagateRays(id=items[0].value, lenses=items[1:])
+
+    def ray_declaration(self, items):
+        return ArcaneRays(
+            id=gen_id(),
+            definition=items[0],
+            direction=items[1],
+            count=int(items[2]),
+            style=next(
+                (item for item in items if isinstance(item, StyleProperties)), None
+            ),
+        )
 
     def circle_declaration(self, items):
         style = next(

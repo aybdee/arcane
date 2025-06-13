@@ -5,51 +5,37 @@ from typing import Any, List, Optional, OrderedDict, Tuple
 from manim import *
 
 import arcane.graphics.config
-from arcane.core.models.constructs import (
-    ArcaneArrow,
-    ArcaneCircle,
-    ArcaneClearObject,
-    ArcaneElbow,
-    ArcaneLine,
-    ArcanePoint,
-    ArcanePolygon,
-    ArcaneRectangle,
-    ArcaneRegularPolygon,
-    ArcaneSquare,
-    ArcaneText,
-    MathFunction,
-    ObjectTransform,
-    ParametricMathFunction,
-    PolarMathFunction,
-    Position,
-    RegularMathFunction,
-    RelativeAnglePosition,
-    RelativeDirectionPosition,
-    SweepDot,
-    SweepObjects,
-    VLines,
-)
+from arcane.core.models.constructs import (ArcaneArrow, ArcaneCircle,
+                                           ArcaneClearObject, ArcaneElbow,
+                                           ArcaneLens, ArcaneLine, ArcanePoint,
+                                           ArcanePolygon, ArcaneRays,
+                                           ArcaneRectangle,
+                                           ArcaneRegularPolygon, ArcaneSquare,
+                                           ArcaneText, MathFunction,
+                                           ObjectTransform,
+                                           ParametricMathFunction,
+                                           PolarMathFunction, Position,
+                                           PropagateRays, RegularMathFunction,
+                                           RelativeAnglePosition,
+                                           RelativeDirectionPosition, SweepDot,
+                                           SweepObjects, VLines)
 from arcane.core.runtime.types import InterpreterError, InterpreterErrorCode
 from arcane.graphics.animation import AnimationItem, AnimationPhase
+from arcane.graphics.custom_mobjects.rays import Ray
 from arcane.graphics.objects import PlotContainer
-from arcane.graphics.renderers.geometry import (
-    render_arrow,
-    render_circle,
-    render_elbow,
-    render_line,
-    render_point,
-    render_polygon,
-    render_rectangle,
-    render_regular_polygon,
-    render_square,
-)
-from arcane.graphics.renderers.graph import (
-    render_math_function,
-    render_sweep_dot,
-    render_vlines_to_function,
-)
+from arcane.graphics.renderers.geometry import (render_arrow, render_circle,
+                                                render_elbow, render_line,
+                                                render_point, render_polygon,
+                                                render_rectangle,
+                                                render_regular_polygon,
+                                                render_square)
+from arcane.graphics.renderers.graph import (render_math_function,
+                                             render_sweep_dot,
+                                             render_vlines_to_function)
 from arcane.graphics.renderers.misc import render_text
-from arcane.graphics.utils.math import compute_point_on_circle, generate_math_function
+from arcane.graphics.renderers.physics import render_lens, render_rays
+from arcane.graphics.utils.math import (compute_point_on_circle,
+                                        generate_math_function)
 
 SceneObject = (
     PlotContainer
@@ -68,6 +54,8 @@ SceneObject = (
     | ArcaneCircle
     | ArcaneArrow
     | ArcaneClearObject
+    | ArcaneRays
+    | PropagateRays
 )
 
 
@@ -254,6 +242,31 @@ class SceneBuilder:
                     phase=AnimationPhase.PRIMARY,
                 )
             )
+            node.mobject = True
+
+        elif isinstance(node.value, PropagateRays):
+            rays = self.dependency_tree[node.value.id.replace("propagate-", "")]
+            assert isinstance(rays.value, ArcaneRays)
+            rays_mobject = render_rays(rays.value)
+            self.dependency_tree[node.value.id.replace("propagate-", "")].mobject = (
+                rays_mobject
+            )
+
+            rays = list(rays_mobject)
+
+            lenses: List[Any] = list(
+                map(lambda x: self.dependency_tree[x.value].mobject, node.value.lenses)
+            )
+
+            for ray in rays:
+                assert isinstance(ray, Ray)
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=ray.animate.propagate(*lenses),
+                        phase=AnimationPhase.PRIMARY,
+                    )
+                )
             node.mobject = True
 
         elif isinstance(node.value, ArcaneLine):
@@ -492,6 +505,18 @@ class SceneBuilder:
                 )
             )
 
+        elif isinstance(node.value, ArcaneLens):
+            mobject = render_lens(node.value, relative_mobject=node.relative_mobject)
+            node.mobject = mobject
+            self.animations.append(
+                AnimationItem(
+                    node.statement_index,
+                    animation=mobject,
+                    phase=AnimationPhase.PRIMARY,
+                    animate=False,
+                )
+            )
+
         elif isinstance(node.value, ArcaneRegularPolygon):
             polygon_mobject = render_regular_polygon(
                 node.value, relative_mobject=node.relative_mobject
@@ -563,9 +588,7 @@ class SceneBuilder:
                     )
                 )
 
-    def build(self) -> None:
-        # pprint(self.dependency_tree)
-
+    def build(self) -> VGroup:
         def get_pending_animations() -> OrderedDict[str, DependencyNode]:
             pending = OrderedDict()
 
@@ -617,3 +640,13 @@ class SceneBuilder:
                 self.resolve_dependency(id)
 
             previous_pending = pending
+
+        all_mobject = [
+            node.mobject
+            for node in self.dependency_tree.values()
+            if isinstance(node.mobject, Mobject)
+        ]
+
+        container_mobject = VGroup(*all_mobject)
+
+        return container_mobject

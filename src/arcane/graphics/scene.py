@@ -17,11 +17,11 @@ def construct_scene(scene_builder: SceneBuilder):
     class ArcaneScene(SpaceScene):
         def construct(self):
 
-            scene_builder.build()
+            scene_container = scene_builder.build()
 
             layout_horizontal(scene_builder.groups)
             container_group = VGroup(*scene_builder.groups)
-            scale_to_fit_screen(container_group)
+            scale_to_fit_screen(scene_container)
 
             # Run animations by phase
             for phase in AnimationPhase:

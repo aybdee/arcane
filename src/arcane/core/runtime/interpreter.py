@@ -6,43 +6,26 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 import numpy as np
 import sympy
 
-from arcane.core.models.constructs import (
-    Animation,
-    ArcaneClearObject,
-    ArcaneLine,
-    ArcaneText,
-    AxisBlock,
-    Definition,
-    DirectAnimatable,
-    Identifier,
-    MathFunction,
-    ObjectTransform,
-    ObjectTransformExpression,
-    ParametricMathFunction,
-    PolarBlock,
-    PolarMathFunction,
-    Program,
-    RegularMathFunction,
-    SweepDot,
-    SweepObjects,
-    SweepTransform,
-    VLines,
-)
+from arcane.core.models.constructs import (Animation, ArcaneClearObject,
+                                           ArcaneLine, ArcaneText, AxisBlock,
+                                           Definition, DirectAnimatable,
+                                           Identifier, MathFunction,
+                                           ObjectTransform,
+                                           ObjectTransformExpression,
+                                           ParametricMathFunction, PolarBlock,
+                                           PolarMathFunction, Program,
+                                           PropagateRays, RegularMathFunction,
+                                           SweepDot, SweepObjects,
+                                           SweepTransform, VLines)
 from arcane.core.runtime.store import Store
-from arcane.core.runtime.types import (
-    InterpreterError,
-    InterpreterErrorCode,
-    InterpreterMessage,
-    InterpreterMessageType,
-)
+from arcane.core.runtime.types import (InterpreterError, InterpreterErrorCode,
+                                       InterpreterMessage,
+                                       InterpreterMessageType)
 from arcane.graphics.builder import SceneBuilder
 from arcane.graphics.objects import PlotContainer
 from arcane.graphics.scene import construct_scene
-from arcane.graphics.utils.math import (
-    avoid_zero,
-    compute_function_range,
-    generate_math_function,
-)
+from arcane.graphics.utils.math import (avoid_zero, compute_function_range,
+                                        generate_math_function)
 from arcane.utils import gen_id
 
 
@@ -393,6 +376,16 @@ class ArcaneInterpreter:
                         self.scene_builder.add_object(
                             id=point_id, value=point, statement_index=statement_index
                         )
+
+        elif isinstance(obj, PropagateRays):
+            if not self.scene_builder.get(obj.id):
+                ray_definition = self.store.get_or_throw(obj.id)
+                self.scene_builder.add_object(
+                    id=obj.id, value=ray_definition, statement_index=statement_index
+                )
+
+            obj.id = f"propagate-{obj.id}"
+            dep = [*map(lambda x: x.id, obj.lenses)]
 
         self.scene_builder.add_object(
             id=obj.id, value=obj, dependencies=dep, statement_index=statement_index

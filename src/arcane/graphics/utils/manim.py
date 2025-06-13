@@ -4,13 +4,27 @@ from typing import Any, Concatenate, Optional, ParamSpec
 
 from manim import *
 
-from arcane.core.models.constructs import (Position, RelativeDirectionPosition,
+from arcane.core.models.constructs import (Direction, Position,
+                                           RelativeDirectionPosition,
                                            RelativePositionPlacement)
 
 
 def get_random_color():
     colors = [GREEN, YELLOW, WHITE, RED, BLUE, ORANGE, PURPLE, TEAL]
     return random.choice(colors)
+
+
+def map_direction(direction: Direction) -> np.ndarray:
+    """Maps a Direction enum to a numpy array representing the direction vector."""
+    direction_map = {
+        Direction.UP: UP,
+        Direction.DOWN: DOWN,
+        Direction.LEFT: LEFT,
+        Direction.RIGHT: RIGHT,
+        Direction.IN: IN,
+        Direction.OUT: OUT,
+    }
+    return direction_map.get(direction, np.array([0, 0, 0]))
 
 
 def clip_plot(csystem, plotfun, x_range=[-5, 5, 0.01], **kwargs):
@@ -80,25 +94,24 @@ def map_color_string(color_str: str) -> ManimColor:
         "orange": ORANGE,
         "purple": PURPLE,
         "pink": PINK,
-        
         # Light variants
         "light_gray": LIGHT_GRAY,
         "light_brown": "#CD853F",
-        
         # Dark variants
         "dark_gray": DARK_GRAY,
         "dark_blue": DARK_BLUE,
         "dark_brown": "#8B4513",
-        
         # Special colors
         "teal": TEAL,
         "maroon": "#800000",
         "gold": GOLD,
         "gray": GRAY,
     }
-    
+
     color_str = color_str.lower()
     if color_str not in COLOR_MAP:
-        raise ValueError(f"Unsupported color: {color_str}. Available colors: {', '.join(COLOR_MAP.keys())}")
-    
+        raise ValueError(
+            f"Unsupported color: {color_str}. Available colors: {', '.join(COLOR_MAP.keys())}"
+        )
+
     return COLOR_MAP[color_str]

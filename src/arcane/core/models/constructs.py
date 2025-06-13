@@ -17,6 +17,15 @@ class RelativePositionPlacement(Enum):
     BELOW = "BELOW"
 
 
+class Direction(Enum):
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+    UP = "UP"
+    DOWN = "DOWN"
+    IN = "IN"
+    OUT = "OUT"
+
+
 AbsoluteCoordinatePosition = Tuple[float, float]
 
 
@@ -72,6 +81,12 @@ class SweepCoordinates:
 class SweepObjects:
     sweep_from: Identifier
     sweep_to: Identifier
+
+
+@dataclass
+class PropagateRays:
+    id: str
+    lenses: List[Identifier]
 
 
 @dataclass
@@ -257,6 +272,24 @@ class ArcaneCircle:
 
 
 @dataclass
+class ArcaneLens:
+    id: str
+    focal_length: int
+    thickness: int
+    position: Position
+    style: Optional[StyleProperties] = None
+
+
+@dataclass
+class ArcaneRays:
+    id: str
+    definition: SweepCoordinates
+    count: int
+    direction: Direction
+    style: Optional[StyleProperties] = None
+
+
+@dataclass
 class ArcaneArrow:
     id: str
     definition: Union[SweepCoordinates, SweepObjects]
@@ -282,6 +315,8 @@ class Definition:
         | ArcanePolygon
         | ArcaneCircle
         | ArcaneArrow
+        | ArcaneLens
+        | ArcaneRays
     )
 
 
@@ -339,7 +374,10 @@ Animatable = (
     | ArcaneCircle
     | ArcaneArrow
     | ObjectTransform
+    | ArcaneLens
+    | PropagateRays
 )
+
 DirectAnimatable = (
     VLines,
     ArcaneText,
@@ -353,7 +391,10 @@ DirectAnimatable = (
     ArcanePolygon,
     ArcaneCircle,
     ArcaneArrow,
+    ArcaneArrow,
     ObjectTransform,
+    ArcaneLens,
+    PropagateRays,
 )
 
 ########### end union type definitions

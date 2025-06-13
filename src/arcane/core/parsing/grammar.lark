@@ -10,7 +10,7 @@ program : (statement | COMMENT)*
 statement : definition | animate_declaration | clear_declaration |axis_declaration | polar_declaration  NEWLINE
 
 // Variable and function definitions
-definition : "Define" IDENT "as" (expression | line_declaration | arrow_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | circle_declaration)
+definition : "Define" IDENT "as" (expression | line_declaration | lens_declaration | arrow_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | circle_declaration | ray_declaration)
 
 // ==============================================================================
 // MATHEMATICAL EXPRESSIONS AND FUNCTIONS
@@ -57,7 +57,7 @@ point_declaration: "point" position ["and" style_block]
 line_declaration: "line" (sweep_coordinates | coordinate_angle_length | ident_sweep) ["and" style_block]
 arrow_declaration: "arrow" (sweep_coordinates | ident_sweep) ["and" style_block]
 sweep_coordinates: "from" "("numerical_expression","numerical_expression")" "to" "("numerical_expression","numerical_expression")"
-coordinate_angle_length:  "from" "("numerical_expression","numerical_expression")" "with angle" numerical_expression "and length" numerical_expression
+coordinate_angle_length:  "from" "("numerical_expression","numerical_expression")" "with angle" numerical_expression ["and"] "length" numerical_expression
 ident_sweep: "from" IDENT "to" IDENT
 
 // Angle declarations
@@ -66,10 +66,10 @@ three_point_angle: position "from" "("numerical_expression","numerical_expressio
 
 // Rectangle and square declarations
 square_declaration: "square" position_length ["and" style_block]
-rectangle_declaration: "rectangle with width" numerical_expression "and height" numerical_expression position ["and" style_block]
+rectangle_declaration: "rectangle with width" numerical_expression ["and"] "height" numerical_expression position ["and" style_block]
 
 // Polygon declarations
-regular_polygon_declaration: "regular polygon with radius" numerical_expression "and sides" numerical_expression position ["and" style_block]
+regular_polygon_declaration: "regular polygon with radius" numerical_expression ["and"] "sides" numerical_expression position ["and" style_block]
 polygon_declaration: "polygon with points" point_list ["and" style_block]
 point_list: "("numerical_expression","numerical_expression")" ("," "("numerical_expression","numerical_expression")")*
 
@@ -80,14 +80,24 @@ circle_declaration: "circle with radius" numerical_expression position ["and" st
 style_block: "style" "{" style_property (NEWLINE style_property)* "}"
 style_property: STYLE_PROPERTY_KEY ":" STRING
 
+
+// ==============================================================================
+// HIGHER LEVEL CONSTRUCTS
+// ==============================================================================
+lens_declaration: "lens" "with focal length" numerical_expression ["and"] "thickness" numerical_expression position ["and" style_block]
+ray_declaration: "rays" sweep_coordinates "with" "direction" DIRECTION ["and"] "count" numerical_expression ["and" style_block]
+
+
+
 // ==============================================================================
 // ANIMATION AND DISPLAY FEATURES
 // ==============================================================================
 
 // Animation declarations
 animate_declaration: "@" animatable
-animatable: (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | arrow_declaration |line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration | circle_declaration)
+animatable: (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | arrow_declaration |line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration | circle_declaration | lens_declaration | propagate_rays)
 clear_declaration: "clear" IDENT
+propagate_rays: "propagate" IDENT "through" IDENT [("then" IDENT)*]
 
 // Animation modifiers and effects
 sweep_dot: "sweep dot across"
@@ -125,6 +135,7 @@ position: relative_angle_position | absolute_coordinate_position | relative_dire
 relative_angle_position: "on" IDENT "at angle" numerical_expression
 absolute_coordinate_position: "at" "("numerical_expression","numerical_expression")"
 relative_direction_position: RELATIVE_POSITION_DIRECTION IDENT
+DIRECTION: "RIGHT" | "LEFT" | "UP" | "DOWN"
 assign: IDENT "="  numerical_expression
 
 // ==============================================================================

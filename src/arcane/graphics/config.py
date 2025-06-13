@@ -1,7 +1,8 @@
 import os
-from manim import config
-from arcane.utils import get_project_root
 
+from manim import config
+
+from arcane.utils import get_project_root
 
 root_dir = get_project_root()
 

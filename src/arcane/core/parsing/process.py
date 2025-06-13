@@ -2,13 +2,8 @@ import re
 from dataclasses import fields, is_dataclass
 from typing import Any, Set
 
-from arcane.core.models.constructs import (
-    Animation,
-    Definition,
-    Identifier,
-    Program,
-    Statement,
-)
+from arcane.core.models.constructs import (Animation, Definition, Identifier,
+                                           Program, Statement)
 
 
 def _is_generated_id(id_str: str) -> bool:
@@ -120,7 +115,10 @@ def resolve_dependencies(ast: Program) -> Program:
         old_to_new_index[old_idx] = next_index
         # If this is a block, record its old statement indices for later update
         if hasattr(statement.value, "statements") and hasattr(statement.value, "id"):
-            block_statements_map[statement.value.id] = (statement.value, list(getattr(statement.value, "statements", [])))
+            block_statements_map[statement.value.id] = (  # type:ignore
+                statement.value,
+                list(getattr(statement.value, "statements", [])),
+            )
         next_index += 1
 
     # Update the AST with the new statements
@@ -128,7 +126,9 @@ def resolve_dependencies(ast: Program) -> Program:
 
     # Update block statement indices to new indices
     for block_id, (block_obj, old_indices) in block_statements_map.items():
-        new_indices = [old_to_new_index[idx] for idx in old_indices if idx in old_to_new_index]
+        new_indices = [
+            old_to_new_index[idx] for idx in old_indices if idx in old_to_new_index
+        ]
         block_obj.statements = new_indices
 
     return ast

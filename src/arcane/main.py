@@ -17,9 +17,7 @@ else:
         with open(argv[1], "r") as f:
             tree = parse(f.read())
             program = ArcaneTransfomer().transform(tree)
-            # pprint(program)
             program = resolve_dependencies(program)
-            # pprint(program)
             interpreter = ArcaneInterpreter(program)
             interpreter.run()
     else:
