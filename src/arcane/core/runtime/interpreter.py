@@ -6,26 +6,47 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 import numpy as np
 import sympy
 
-from arcane.core.models.constructs import (Animatable, Animation,
-                                           ArcaneClearObject, ArcaneLine,
-                                           ArcaneText, AxisBlock, Definition,
-                                           DirectAnimatable, Identifier,
-                                           MathFunction, ObjectTransform,
-                                           ObjectTransformExpression,
-                                           ParametricMathFunction, PolarBlock,
-                                           PolarMathFunction, Program,
-                                           PropagateRays, RegularMathFunction,
-                                           SweepDot, SweepObjects,
-                                           SweepTransform, VLines)
+from arcane.core.models.constructs import (
+    Animatable,
+    Animation,
+    ArcaneClearObject,
+    ArcaneLine,
+    ArcaneMove,
+    ArcaneMoveAlong,
+    ArcaneText,
+    AxisBlock,
+    Definition,
+    DirectAnimatable,
+    Identifier,
+    MathFunction,
+    ObjectTransform,
+    ObjectTransformExpression,
+    ParametricMathFunction,
+    PolarBlock,
+    PolarMathFunction,
+    Program,
+    PropagateRays,
+    RegularMathFunction,
+    SweepDot,
+    SweepObjects,
+    SweepTransform,
+    VLines,
+)
 from arcane.core.runtime.store import Store
-from arcane.core.runtime.types import (InterpreterError, InterpreterErrorCode,
-                                       InterpreterMessage,
-                                       InterpreterMessageType)
+from arcane.core.runtime.types import (
+    InterpreterError,
+    InterpreterErrorCode,
+    InterpreterMessage,
+    InterpreterMessageType,
+)
 from arcane.graphics.builder import SceneBuilder
 from arcane.graphics.objects import PlotContainer
 from arcane.graphics.scene import construct_scene
-from arcane.graphics.utils.math import (avoid_zero, compute_function_range,
-                                        generate_math_function)
+from arcane.graphics.utils.math import (
+    avoid_zero,
+    compute_function_range,
+    generate_math_function,
+)
 from arcane.utils import gen_id
 
 
@@ -280,7 +301,6 @@ class ArcaneInterpreter:
             objects = []
             for obj in (instance.object_from, instance.object_to):
                 if isinstance(obj, (sympy.Symbol, sympy.Add, sympy.Mul)):
-                    print("we here")
                     evaluate_expr = self.evaluate_expression(obj)
                     objects.append(evaluate_expr)
                 elif isinstance(obj, Animatable):
@@ -413,6 +433,9 @@ class ArcaneInterpreter:
                         self.scene_builder.add_object(
                             id=point_id, value=point, statement_index=statement_index
                         )
+
+        elif isinstance(obj, ArcaneMoveAlong):
+            dep = [obj.variable_to_move.id, obj.variable_along.id]
 
         elif isinstance(obj, PropagateRays):
             if not self.scene_builder.get(obj.id):

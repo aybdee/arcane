@@ -48,7 +48,10 @@ def construct_scene(scene_builder: SceneBuilder):
 
                 for item_group in items_to_animate:
                     self.play(
-                        *[item.animation for item in item_group],
+                        *[
+                            item.animation() if item.defer else item.animation
+                            for item in item_group
+                        ],
                         **{k: v for item in item_group for k, v in item.config.items()},
                     )
 

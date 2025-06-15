@@ -3,6 +3,7 @@ from functools import wraps
 from typing import Any, Concatenate, Optional, ParamSpec
 
 from manim import *
+from manim.typing import Point3D, Vector3D
 
 from arcane.core.models.constructs import (Direction, Position,
                                            RelativeDirectionPosition,
@@ -12,6 +13,24 @@ from arcane.core.models.constructs import (Direction, Position,
 def get_random_color():
     colors = [GREEN, YELLOW, WHITE, RED, BLUE, ORANGE, PURPLE, TEAL]
     return random.choice(colors)
+
+
+def get_relative_position(
+    mobject_or_point: Mobject | Point3D,
+    direction: Vector3D = RIGHT,
+    aligned_edge: Vector3D = ORIGIN,
+    index_of_submobject_to_align: int | None = None,
+):
+    if isinstance(mobject_or_point, Mobject):
+        mob = mobject_or_point
+        if index_of_submobject_to_align is not None:
+            target_aligner = mob[index_of_submobject_to_align]
+        else:
+            target_aligner = mob
+        target_point = target_aligner.get_critical_point(aligned_edge + direction)
+    else:
+        target_point = mobject_or_point
+    return target_point
 
 
 def map_direction(direction: Direction) -> np.ndarray:

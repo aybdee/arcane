@@ -5,9 +5,11 @@ from typing import Any, List, Optional, OrderedDict, Tuple
 from manim import *
 
 import arcane.graphics.config
-from arcane.core.models.constructs import (ArcaneArrow, ArcaneCircle,
+from arcane.core.models.constructs import (AbsoluteCoordinatePosition,
+                                           ArcaneArrow, ArcaneCircle,
                                            ArcaneClearObject, ArcaneElbow,
-                                           ArcaneLens, ArcaneLine, ArcanePoint,
+                                           ArcaneLens, ArcaneLine, ArcaneMove,
+                                           ArcaneMoveAlong, ArcanePoint,
                                            ArcanePolygon, ArcaneRays,
                                            ArcaneRectangle,
                                            ArcaneRegularPolygon, ArcaneSquare,
@@ -17,7 +19,8 @@ from arcane.core.models.constructs import (ArcaneArrow, ArcaneCircle,
                                            PolarMathFunction, Position,
                                            PropagateRays, RegularMathFunction,
                                            RelativeAnglePosition,
-                                           RelativeDirectionPosition, SweepDot,
+                                           RelativeDirectionPosition,
+                                           RelativePositionPlacement, SweepDot,
                                            SweepObjects, VLines)
 from arcane.core.runtime.types import InterpreterError, InterpreterErrorCode
 from arcane.graphics.animation import AnimationItem, AnimationPhase
@@ -34,6 +37,7 @@ from arcane.graphics.renderers.graph import (render_math_function,
                                              render_vlines_to_function)
 from arcane.graphics.renderers.misc import render_text
 from arcane.graphics.renderers.physics import render_lens, render_rays
+from arcane.graphics.utils.manim import get_relative_position
 from arcane.graphics.utils.math import (compute_point_on_circle,
                                         generate_math_function)
 
@@ -57,6 +61,8 @@ SceneObject = (
     | ArcaneRays
     | PropagateRays
     | ArcaneLens
+    | ArcaneMove
+    | ArcaneMoveAlong
 )
 
 
@@ -164,7 +170,7 @@ class SceneBuilder:
     def get(self, id: str) -> Optional[DependencyNode]:
         return self.dependency_tree.get(id)
 
-    def collect_all_descendant_mobjects(self, current_id: str) -> List[Any]:
+    def collect_plot_mobjects(self, current_id: str) -> List[Any]:
         collected: List[Any] = []
         direct_dependants = OrderedDict(
             (k, v)
@@ -173,15 +179,14 @@ class SceneBuilder:
         )
         for child_id in direct_dependants:
             node = self.dependency_tree[child_id]
-            if node.mobject is None:
+            if node.mobject is None and isinstance(node.value, (MathFunction, VLines)):
                 self.resolve_dependency(child_id)
 
             mobj = node.mobject
             if mobj is not None:
                 collected.extend(mobj if isinstance(mobj, (list, tuple)) else [mobj])
 
-            # Recurse
-            collected.extend(self.collect_all_descendant_mobjects(child_id))
+            collected.extend(self.collect_plot_mobjects(child_id))
         return collected
 
     def resolve_dependency(self, id: str) -> None:
@@ -312,6 +317,73 @@ class SceneBuilder:
                             phase=AnimationPhase.PRIMARY,
                         )
                     )
+
+        elif isinstance(node.value, ArcaneMoveAlong):
+            mobject_to_move = self.dependency_tree[
+                node.value.variable_to_move.value
+            ].mobject
+            mobject_along = self.dependency_tree[
+                node.value.variable_along.value
+            ].mobject
+
+            assert mobject_to_move is not None
+            assert mobject_along is not None
+            self.animations.append(
+                AnimationItem(
+                    node.statement_index,
+                    animation=MoveAlongPath(mobject_to_move, mobject_along),
+                    phase=AnimationPhase.PRIMARY,
+                    config={"rate_func": linear, "run_time": 5},
+                )
+            )
+            node.mobject = True
+
+        elif isinstance(node.value, ArcaneMove):
+            val = node.value
+            node_mobject = self.dependency_tree[
+                node.value.variable.value  # type:ignore
+            ].mobject
+            if isinstance(node.value.position_to, Tuple):
+                if not node.is_background:
+                    self.animations.append(
+                        AnimationItem(
+                            node.statement_index,
+                            animation=lambda: node_mobject.animate.move_to(
+                                np.array([*node.value.position_to, 0])  # type: ignore
+                            ),
+                            phase=AnimationPhase.PRIMARY,
+                            defer=True,
+                        )
+                    )
+
+            elif isinstance(node.value.position_to, RelativeDirectionPosition):
+                relative_object_id = node.value.position_to.variable.id
+                relative_object = self.dependency_tree[relative_object_id]
+                relative_mobject = relative_object.mobject
+                direction_map = {
+                    RelativePositionPlacement.ABOVE: UP,
+                    RelativePositionPlacement.BELOW: DOWN,
+                    RelativePositionPlacement.LEFT: LEFT,
+                    RelativePositionPlacement.RIGHT: RIGHT,
+                }
+                assert relative_mobject is not None
+                relative_position = get_relative_position(
+                    relative_mobject, direction_map[node.value.position_to.placement]
+                )
+
+                if not node.is_background:
+                    self.animations.append(
+                        AnimationItem(
+                            node.statement_index,
+                            animation=lambda: node_mobject.animate.move_to(
+                                relative_position
+                            ),
+                            phase=AnimationPhase.PRIMARY,
+                            defer=True,
+                        )
+                    )
+
+            node.mobject = True
 
         elif isinstance(node.value, ObjectTransform):
             from_object_id = node.value.object_from.id
@@ -472,7 +544,7 @@ class SceneBuilder:
                     node.statement_index,
                     animation=tracker.animate.set_value(parent_plot.value.x_range[1]),
                     phase=AnimationPhase.SECONDARY,
-                    config={"rate_func": linear},
+                    config={"rate_func": linear, "run_time": 5},
                 )
             )
 
@@ -488,7 +560,7 @@ class SceneBuilder:
             # resolve children
             for dependant_id in dependants.keys():
                 self.resolve_dependency(dependant_id)
-            descendants.extend(self.collect_all_descendant_mobjects(id))
+            descendants.extend(self.collect_plot_mobjects(id))
 
             plots_group = VGroup(
                 node.mobject,
@@ -685,6 +757,7 @@ class SceneBuilder:
 
             # Process pending animations
             for id in pending.keys():
+                print(f"resolving dependency {id}")
                 self.resolve_dependency(id)
 
             previous_pending = pending

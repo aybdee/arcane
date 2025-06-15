@@ -180,7 +180,7 @@ def render_circle(circle: ArcaneCircle, **kwargs):
         stroke_color = map_color_string(circle.style.stroke_color)
 
     circle_mobject = Circle(
-        radius=radius,
+        radius=radius * 0.5,  # scale down to match general dimensions
         color=stroke_color,
     )
 

@@ -95,7 +95,7 @@ ray_declaration: "rays" sweep_coordinates "with" "direction" DIRECTION ["and"] "
 
 // Animation declarations
 animate_declaration: "@" animatable
-animatable: (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | arrow_declaration |line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration | circle_declaration | lens_declaration | propagate_rays)
+animatable: (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | arrow_declaration |line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration | circle_declaration | lens_declaration | propagate_rays | move_declaration | move_along_declaration)
 clear_declaration: "clear" IDENT
 propagate_rays: "propagate" IDENT "through" IDENT [("then" IDENT)*]
 
@@ -128,12 +128,14 @@ polar_declaration: "on" "polar" IDENT "{" (animate_declaration NEWLINE)* "}"
 
 // Geometric transformations
 transform_declaration: "transform" (expression | animatable) "to" (expression | animatable)
+move_declaration: "move" IDENT ["to"] position
+move_along_declaration: "move" IDENT "along" IDENT
 
 // Position and length utilities
 position_length: "with length" numerical_expression position
 position: relative_angle_position | absolute_coordinate_position | relative_direction_position
 relative_angle_position: "on" IDENT "at angle" numerical_expression
-absolute_coordinate_position: "at" "("numerical_expression","numerical_expression")"
+absolute_coordinate_position: ["at"] "("numerical_expression","numerical_expression")"
 relative_direction_position: RELATIVE_POSITION_DIRECTION IDENT
 DIRECTION: "RIGHT" | "LEFT" | "UP" | "DOWN"
 assign: IDENT "="  numerical_expression

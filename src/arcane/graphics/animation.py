@@ -20,3 +20,4 @@ class AnimationItem:
     phase: AnimationPhase
     config: Dict = field(default_factory=dict)
     animate: bool = True
+    defer: bool = False

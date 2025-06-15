@@ -109,6 +109,20 @@ class ObjectTransform:
     object_to: DirectAnimatableType | MathFunction
 
 
+@dataclass
+class ArcaneMove:
+    id: str
+    variable: Identifier
+    position_to: Position
+
+
+@dataclass
+class ArcaneMoveAlong:
+    id: str
+    variable_to_move: Identifier
+    variable_along: Identifier
+
+
 ##### end Transforms
 
 
@@ -376,6 +390,8 @@ Animatable = (
     | ObjectTransform
     | ArcaneLens
     | PropagateRays
+    | ArcaneMove
+    | ArcaneMoveAlong
 )
 
 DirectAnimatableType = (
@@ -395,6 +411,8 @@ DirectAnimatableType = (
     | ObjectTransform
     | ArcaneLens
     | PropagateRays
+    | ArcaneMove
+    | ArcaneMoveAlong
 )
 
 
@@ -415,6 +433,8 @@ DirectAnimatable = (
     ObjectTransform,
     ArcaneLens,
     PropagateRays,
+    ArcaneMove,
+    ArcaneMoveAlong,
 )
 
 ########### end union type definitions
