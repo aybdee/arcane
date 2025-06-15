@@ -6,11 +6,11 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 import numpy as np
 import sympy
 
-from arcane.core.models.constructs import (Animation, ArcaneClearObject,
-                                           ArcaneLine, ArcaneText, AxisBlock,
-                                           Definition, DirectAnimatable,
-                                           Identifier, MathFunction,
-                                           ObjectTransform,
+from arcane.core.models.constructs import (Animatable, Animation,
+                                           ArcaneClearObject, ArcaneLine,
+                                           ArcaneText, AxisBlock, Definition,
+                                           DirectAnimatable, Identifier,
+                                           MathFunction, ObjectTransform,
                                            ObjectTransformExpression,
                                            ParametricMathFunction, PolarBlock,
                                            PolarMathFunction, Program,
@@ -277,23 +277,43 @@ class ArcaneInterpreter:
             )
 
         elif isinstance(instance, ObjectTransformExpression):
-            evaluate_expr_from = self.evaluate_expression(instance.object_from)
-            evaluate_expr_to = self.evaluate_expression(instance.object_to)
+            objects = []
+            for obj in (instance.object_from, instance.object_to):
+                if isinstance(obj, (sympy.Symbol, sympy.Add, sympy.Mul)):
+                    print("we here")
+                    evaluate_expr = self.evaluate_expression(obj)
+                    objects.append(evaluate_expr)
+                elif isinstance(obj, Animatable):
+                    objects.append(obj)
+                else:
+                    raise InterpreterError(
+                        InterpreterErrorCode.UNSUPPORTED_STATEMENT,
+                        statement_type=type(obj).__name__,
+                    )
+
+            object_from, object_to = objects
+
             # update store with new expression
             if self.store.get(str(instance.object_from)):
                 variable_from = str(instance.object_from)
                 value_from = copy.deepcopy(self.store.get(variable_from))
                 if isinstance(value_from, (PolarMathFunction, RegularMathFunction)):
-                    value_from.expression = evaluate_expr_to.expression
+                    value_from.expression = object_to.expression
                 elif isinstance(value_from, ParametricMathFunction):
-                    value_from.expressions = evaluate_expr_to.expressions
+                    value_from.expressions = object_to.expressions
+                else:
+                    # just set the objects directly
+                    value_from = object_to
+
+                # update the store with new definitions
                 self.store.add(variable_from, value_from)
+
             return self.process_animation(
                 Animation(
                     instance=ObjectTransform(
                         id=gen_id(),
-                        object_from=evaluate_expr_from,
-                        object_to=evaluate_expr_to,
+                        object_from=object_from,
+                        object_to=object_to,
                     ),
                     transforms=transforms,
                 ),
@@ -365,7 +385,24 @@ class ArcaneInterpreter:
         elif isinstance(obj, SweepDot):
             dep = [obj.variable.value]
         elif isinstance(obj, ObjectTransform):
-            dep = [obj.object_from.id]
+            if not isinstance(obj.object_from, MathFunction):
+                self.scene_builder.add_object(
+                    id=obj.object_from.id,
+                    statement_index=statement_index,
+                    value=obj.object_from,
+                )
+                dep.append(obj.object_from.id)
+            else:
+                dep.append(obj.object_from.id)
+
+            if not isinstance(obj.object_to, MathFunction):
+                self.scene_builder.add_object(
+                    id=obj.object_to.id,
+                    statement_index=statement_index,
+                    value=obj.object_to,
+                    is_background=True,
+                )
+                dep.append(obj.object_to.id)
 
         elif isinstance(obj, ArcaneLine):
             if isinstance(obj.definition, SweepObjects):

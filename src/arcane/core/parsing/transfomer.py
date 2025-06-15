@@ -245,6 +245,7 @@ class ArcaneTransfomer(Transformer):
         )
 
     def transform_declaration(self, items):
+        items = list(flatten(items))
         return ObjectTransformExpression(object_from=items[0], object_to=items[1])
 
     def ident_sweep(self, items):
@@ -327,7 +328,6 @@ class ArcaneTransfomer(Transformer):
             return sympify(items[0])
         elif isinstance(items[0], List):
             return list(map(sympify, items[0]))
-
         else:
             return items[0]
 

@@ -98,15 +98,15 @@ class CoordinateAngleLength:
 
 @dataclass
 class ObjectTransformExpression:
-    object_from: sympy.Basic
-    object_to: sympy.Basic | List[sympy.Basic]
+    object_from: sympy.Basic | Animatable
+    object_to: sympy.Basic | List[sympy.Basic] | Animatable
 
 
 @dataclass
 class ObjectTransform:
     id: str
-    object_from: RegularMathFunction | ParametricMathFunction | PolarMathFunction
-    object_to: RegularMathFunction | ParametricMathFunction | PolarMathFunction
+    object_from: DirectAnimatableType | MathFunction
+    object_to: DirectAnimatableType | MathFunction
 
 
 ##### end Transforms
@@ -377,6 +377,26 @@ Animatable = (
     | ArcaneLens
     | PropagateRays
 )
+
+DirectAnimatableType = (
+    VLines
+    | ArcaneText
+    | SweepDot
+    | ArcaneLine
+    | ArcanePoint
+    | ArcaneElbow
+    | ArcaneSquare
+    | ArcaneRectangle
+    | ArcaneRegularPolygon
+    | ArcanePolygon
+    | ArcaneCircle
+    | ArcaneArrow
+    | ArcaneArrow
+    | ObjectTransform
+    | ArcaneLens
+    | PropagateRays
+)
+
 
 DirectAnimatable = (
     VLines,

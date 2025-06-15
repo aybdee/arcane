@@ -56,6 +56,7 @@ SceneObject = (
     | ArcaneClearObject
     | ArcaneRays
     | PropagateRays
+    | ArcaneLens
 )
 
 
@@ -68,6 +69,7 @@ class DependencyNode:
     dependencies: List[str]
     mobject: Optional[Any] = None
     relative_mobject: Optional[Mobject] = None
+    is_background: bool = False
 
 
 class SceneBuilder:
@@ -85,6 +87,7 @@ class SceneBuilder:
         statement_index: int,
         value: SceneObject,
         dependencies: List[str] = [],
+        is_background: bool = False,
     ) -> str:
 
         definition = getattr(value, "definition", None)
@@ -101,6 +104,7 @@ class SceneBuilder:
             value=value,
             statement_index=statement_index,
             dependencies=dependencies,
+            is_background=is_background,
         )
         return id
 
@@ -204,13 +208,14 @@ class SceneBuilder:
 
             node.mobject = plot
 
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Create(plot),
-                    phase=AnimationPhase.PRIMARY,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(plot),
+                        phase=AnimationPhase.PRIMARY,
+                    )
                 )
-            )
 
         elif isinstance(node.value, ArcanePoint):
             mobject = render_point(node.value, relative_mobject=node.relative_mobject)
@@ -223,25 +228,27 @@ class SceneBuilder:
                 except Exception as e:
                     pass
 
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Create(mobject),
-                    phase=AnimationPhase.PRIMARY,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(mobject),
+                        phase=AnimationPhase.PRIMARY,
+                    )
                 )
-            )
 
         elif isinstance(node.value, ArcaneClearObject):
             obj_to_clear_id = node.dependencies[0]
             obj_to_clear = self.dependency_tree[obj_to_clear_id]
             assert obj_to_clear.mobject is not None
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=FadeOut(obj_to_clear.mobject),
-                    phase=AnimationPhase.PRIMARY,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=FadeOut(obj_to_clear.mobject),
+                        phase=AnimationPhase.PRIMARY,
+                    )
                 )
-            )
             node.mobject = True
 
         elif isinstance(node.value, PropagateRays):
@@ -260,13 +267,14 @@ class SceneBuilder:
 
             for ray in rays:
                 assert isinstance(ray, Ray)
-                self.animations.append(
-                    AnimationItem(
-                        node.statement_index,
-                        animation=ray.animate.propagate(*lenses),
-                        phase=AnimationPhase.PRIMARY,
+                if not node.is_background:
+                    self.animations.append(
+                        AnimationItem(
+                            node.statement_index,
+                            animation=ray.animate.propagate(*lenses),
+                            phase=AnimationPhase.PRIMARY,
+                        )
                     )
-                )
             node.mobject = True
 
         elif isinstance(node.value, ArcaneLine):
@@ -285,74 +293,102 @@ class SceneBuilder:
                 line = render_line(node.value, from_node.mobject, to_node.mobject)
                 self.dependency_tree[id].mobject = line
 
-                self.animations.append(
-                    AnimationItem(
-                        node.statement_index,
-                        animation=Create(line),
-                        phase=AnimationPhase.PRIMARY,
+                if not node.is_background:
+                    self.animations.append(
+                        AnimationItem(
+                            node.statement_index,
+                            animation=Create(line),
+                            phase=AnimationPhase.PRIMARY,
+                        )
                     )
-                )
             else:
                 line = render_line(node.value)
                 self.dependency_tree[id].mobject = line
-                self.animations.append(
-                    AnimationItem(
-                        node.statement_index,
-                        animation=Create(line),
-                        phase=AnimationPhase.PRIMARY,
+                if not node.is_background:
+                    self.animations.append(
+                        AnimationItem(
+                            node.statement_index,
+                            animation=Create(line),
+                            phase=AnimationPhase.PRIMARY,
+                        )
                     )
-                )
 
         elif isinstance(node.value, ObjectTransform):
             from_object_id = node.value.object_from.id
-            to_object = node.value.object_to
-            from_object = self.dependency_tree[from_object_id]
-            container_id = from_object.dependencies[0]
-            container = self.dependency_tree[container_id]
-            if container.mobject is None:
-                raise ValueError(
-                    f"Container mobject for {container_id} is not resolved"
-                )
+            to_object_id = node.value.object_to.id
 
-            assert from_object.mobject is not None
+            from_object = self.dependency_tree[from_object_id]
 
             if isinstance(from_object.value, MathFunction):
-                to_object.x_range = from_object.value.x_range
-                to_object.y_range = from_object.value.y_range
-                if isinstance(from_object.value, ParametricMathFunction):
-                    assert isinstance(to_object, ParametricMathFunction)
-                    to_object.t_range = from_object.value.t_range
+                to_object = node.value.object_to
+                container_id = from_object.dependencies[0]
+                container = self.dependency_tree[container_id]
+                if container.mobject is None:
+                    raise ValueError(
+                        f"Container mobject for {container_id} is not resolved"
+                    )
 
-            # come up with cleaner way to do this
-            to_object.math_function = generate_math_function(to_object)
-            to_mobject = render_math_function(
-                to_object, container.mobject, from_object.mobject.color
-            )
-            assert isinstance(from_object.mobject, Mobject)
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=ReplacementTransform(from_object.mobject, to_mobject),
-                    phase=AnimationPhase.PRIMARY,
-                )
-            )
-            from_object.mobject = to_mobject
+                assert from_object.mobject is not None
+                if isinstance(to_object, MathFunction):
+                    to_object.x_range = from_object.value.x_range
+                    to_object.y_range = from_object.value.y_range
+                    if isinstance(from_object.value, ParametricMathFunction):
+                        assert isinstance(to_object, ParametricMathFunction)
+                        to_object.t_range = from_object.value.t_range
 
-            node.mobject = to_mobject
+                    # come up with cleaner way to do this
+                    to_object.math_function = generate_math_function(to_object)
+                    to_mobject = render_math_function(
+                        to_object, container.mobject, from_object.mobject.color
+                    )
+
+                    assert isinstance(from_object.mobject, Mobject)
+                    if not node.is_background:
+                        self.animations.append(
+                            AnimationItem(
+                                node.statement_index,
+                                animation=ReplacementTransform(
+                                    from_object.mobject, to_mobject
+                                ),
+                                phase=AnimationPhase.PRIMARY,
+                            )
+                        )
+                    from_object.mobject = to_mobject
+
+                    node.mobject = to_mobject
+                else:
+                    raise ValueError(
+                        f"Can only transform math function to other math function"
+                    )
+
+            else:
+                to_object = self.dependency_tree[to_object_id]
+                print(from_object.mobject)
+                print(to_object.mobject)
+                if not node.is_background:
+                    self.animations.append(
+                        AnimationItem(
+                            node.statement_index + 0.5,
+                            animation=Transform(from_object.mobject, to_object.mobject),
+                            phase=AnimationPhase.PRIMARY,
+                        )
+                    )
+                node.mobject = True
 
         elif isinstance(node.value, ArcaneText):
             text_mobject = render_text(
                 node.value, relative_mobject=node.relative_mobject
             )
 
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Write(text_mobject),
-                    phase=AnimationPhase.PRIMARY,
-                    animate=True,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Write(text_mobject),
+                        phase=AnimationPhase.PRIMARY,
+                        animate=True,
+                    )
                 )
-            )
 
             node.mobject = text_mobject
 
@@ -388,14 +424,15 @@ class SceneBuilder:
                 parent_plot.value.x_range,
             )
             node.mobject = lines
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Create(lines),
-                    phase=AnimationPhase.SECONDARY,
-                    animate=True,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(lines),
+                        phase=AnimationPhase.SECONDARY,
+                        animate=True,
+                    )
                 )
-            )
 
         elif isinstance(node.value, SweepDot):
             parent_plot_id = node.dependencies[0]
@@ -420,14 +457,15 @@ class SceneBuilder:
 
             node.mobject = dot
 
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=dot,
-                    phase=AnimationPhase.SECONDARY,
-                    animate=False,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=dot,
+                        phase=AnimationPhase.SECONDARY,
+                        animate=False,
+                    )
                 )
-            )
 
             self.animations.append(
                 AnimationItem(
@@ -457,102 +495,110 @@ class SceneBuilder:
                 *descendants,
             )
 
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=node.mobject,
-                    phase=AnimationPhase.SETUP,
-                    animate=False,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=node.mobject,
+                        phase=AnimationPhase.SETUP,
+                        animate=False,
+                    )
                 )
-            )
 
             self.groups.append(plots_group)
 
         elif isinstance(node.value, ArcaneElbow):
             angle_mobject = render_elbow(node.value)
             node.mobject = angle_mobject
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Create(angle_mobject),
-                    phase=AnimationPhase.PRIMARY,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(angle_mobject),
+                        phase=AnimationPhase.PRIMARY,
+                    )
                 )
-            )
 
         elif isinstance(node.value, ArcaneSquare):
             square_mobject = render_square(
                 node.value, relative_mobject=node.relative_mobject
             )
             node.mobject = square_mobject
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Create(square_mobject),
-                    phase=AnimationPhase.PRIMARY,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(square_mobject),
+                        phase=AnimationPhase.PRIMARY,
+                    )
                 )
-            )
 
         elif isinstance(node.value, ArcaneRectangle):
             rectangle_mobject = render_rectangle(
                 node.value, relative_mobject=node.relative_mobject
             )
             node.mobject = rectangle_mobject
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Create(rectangle_mobject),
-                    phase=AnimationPhase.PRIMARY,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(rectangle_mobject),
+                        phase=AnimationPhase.PRIMARY,
+                    )
                 )
-            )
 
         elif isinstance(node.value, ArcaneLens):
             mobject = render_lens(node.value, relative_mobject=node.relative_mobject)
             node.mobject = mobject
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=mobject,
-                    phase=AnimationPhase.PRIMARY,
-                    animate=False,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=mobject,
+                        phase=AnimationPhase.PRIMARY,
+                        animate=False,
+                    )
                 )
-            )
 
         elif isinstance(node.value, ArcaneRegularPolygon):
             polygon_mobject = render_regular_polygon(
                 node.value, relative_mobject=node.relative_mobject
             )
             node.mobject = polygon_mobject
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Create(polygon_mobject),
-                    phase=AnimationPhase.PRIMARY,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(polygon_mobject),
+                        phase=AnimationPhase.PRIMARY,
+                    )
                 )
-            )
 
         elif isinstance(node.value, ArcanePolygon):
             polygon_mobject = render_polygon(node.value)
             node.mobject = polygon_mobject
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Create(polygon_mobject),
-                    phase=AnimationPhase.PRIMARY,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(polygon_mobject),
+                        phase=AnimationPhase.PRIMARY,
+                    )
                 )
-            )
 
         elif isinstance(node.value, ArcaneCircle):
             circle_mobject = render_circle(
                 node.value, relative_mobject=node.relative_mobject
             )
             node.mobject = circle_mobject
-            self.animations.append(
-                AnimationItem(
-                    node.statement_index,
-                    animation=Create(circle_mobject),
-                    phase=AnimationPhase.PRIMARY,
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(circle_mobject),
+                        phase=AnimationPhase.PRIMARY,
+                    )
                 )
-            )
 
         elif isinstance(node.value, ArcaneArrow):
             if isinstance(node.value.definition, SweepObjects):
@@ -570,23 +616,25 @@ class SceneBuilder:
                 line = render_arrow(node.value, from_node.mobject, to_node.mobject)
                 self.dependency_tree[id].mobject = line
 
-                self.animations.append(
-                    AnimationItem(
-                        node.statement_index,
-                        animation=Create(line),
-                        phase=AnimationPhase.PRIMARY,
+                if not node.is_background:
+                    self.animations.append(
+                        AnimationItem(
+                            node.statement_index,
+                            animation=Create(line),
+                            phase=AnimationPhase.PRIMARY,
+                        )
                     )
-                )
             else:
                 arrow_mobject = render_arrow(node.value)
                 node.mobject = arrow_mobject
-                self.animations.append(
-                    AnimationItem(
-                        node.statement_index,
-                        animation=Create(arrow_mobject),
-                        phase=AnimationPhase.PRIMARY,
+                if not node.is_background:
+                    self.animations.append(
+                        AnimationItem(
+                            node.statement_index,
+                            animation=Create(arrow_mobject),
+                            phase=AnimationPhase.PRIMARY,
+                        )
                     )
-                )
 
     def build(self) -> VGroup:
         def get_pending_animations() -> OrderedDict[str, DependencyNode]:

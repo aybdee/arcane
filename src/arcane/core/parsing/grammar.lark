@@ -127,7 +127,7 @@ polar_declaration: "on" "polar" IDENT "{" (animate_declaration NEWLINE)* "}"
 // ==============================================================================
 
 // Geometric transformations
-transform_declaration: "transform" expression "to" expression
+transform_declaration: "transform" (expression | animatable) "to" (expression | animatable)
 
 // Position and length utilities
 position_length: "with length" numerical_expression position

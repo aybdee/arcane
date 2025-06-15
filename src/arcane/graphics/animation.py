@@ -15,7 +15,7 @@ class AnimationPhase(Enum):
 
 @dataclass
 class AnimationItem:
-    index: int
+    index: float  # use fractions so i can easily insert animations
     animation: Any  # Can be an animation or object to add
     phase: AnimationPhase
     config: Dict = field(default_factory=dict)
