@@ -110,6 +110,20 @@ class ObjectTransform:
 
 
 @dataclass
+class ArcaneRotate:
+    id: str
+    variable: Identifier
+    angle: float
+
+
+@dataclass
+class ArcaneScale:
+    id: str
+    variable: Identifier
+    factor: float
+
+
+@dataclass
 class ArcaneMove:
     id: str
     variable: Identifier
@@ -392,6 +406,7 @@ Animatable = (
     | PropagateRays
     | ArcaneMove
     | ArcaneMoveAlong
+    | ArcaneScale
 )
 
 DirectAnimatableType = (
@@ -413,6 +428,8 @@ DirectAnimatableType = (
     | PropagateRays
     | ArcaneMove
     | ArcaneMoveAlong
+    | ArcaneScale
+    | ArcaneRotate
 )
 
 
@@ -435,6 +452,8 @@ DirectAnimatable = (
     PropagateRays,
     ArcaneMove,
     ArcaneMoveAlong,
+    ArcaneScale,
+    ArcaneRotate,
 )
 
 ########### end union type definitions

@@ -5,54 +5,33 @@ from manim.constants import PI
 from sympy import sympify
 from sympy.core.numbers import E, Float
 
-from arcane.core.models.constructs import (
-    Animatable,
-    Animation,
-    ArcaneArrow,
-    ArcaneCircle,
-    ArcaneClearObject,
-    ArcaneElbow,
-    ArcaneLens,
-    ArcaneLine,
-    ArcaneMove,
-    ArcaneMoveAlong,
-    ArcanePoint,
-    ArcanePolygon,
-    ArcaneRays,
-    ArcaneRectangle,
-    ArcaneRegularPolygon,
-    ArcaneSquare,
-    ArcaneText,
-    AxisBlock,
-    CircleDefinition,
-    CoordinateAngleLength,
-    Definition,
-    Direction,
-    Identifier,
-    MathFunction,
-    ObjectTransformExpression,
-    ParametricMathFunction,
-    PolarBlock,
-    PolarMathFunction,
-    PolygonDefinition,
-    PositionLength,
-    Program,
-    PropagateRays,
-    RectangleDefinition,
-    RegularMathFunction,
-    RegularPolygonDefinition,
-    RelativeAnglePosition,
-    RelativeDirectionPosition,
-    RelativePositionPlacement,
-    Statement,
-    StyleProperties,
-    SweepCoordinates,
-    SweepDot,
-    SweepObjects,
-    SweepTransform,
-    ThreePoint,
-    VLines,
-)
+from arcane.core.models.constructs import (Animatable, Animation, ArcaneArrow,
+                                           ArcaneCircle, ArcaneClearObject,
+                                           ArcaneElbow, ArcaneLens, ArcaneLine,
+                                           ArcaneMove, ArcaneMoveAlong,
+                                           ArcanePoint, ArcanePolygon,
+                                           ArcaneRays, ArcaneRectangle,
+                                           ArcaneRegularPolygon, ArcaneRotate,
+                                           ArcaneScale, ArcaneSquare,
+                                           ArcaneText, AxisBlock,
+                                           CircleDefinition,
+                                           CoordinateAngleLength, Definition,
+                                           Direction, Identifier, MathFunction,
+                                           ObjectTransformExpression,
+                                           ParametricMathFunction, PolarBlock,
+                                           PolarMathFunction,
+                                           PolygonDefinition, PositionLength,
+                                           Program, PropagateRays,
+                                           RectangleDefinition,
+                                           RegularMathFunction,
+                                           RegularPolygonDefinition,
+                                           RelativeAnglePosition,
+                                           RelativeDirectionPosition,
+                                           RelativePositionPlacement,
+                                           Statement, StyleProperties,
+                                           SweepCoordinates, SweepDot,
+                                           SweepObjects, SweepTransform,
+                                           ThreePoint, VLines)
 from arcane.utils import gen_id
 
 
@@ -555,6 +534,12 @@ class ArcaneTransfomer(Transformer):
             variable_to_move=items[0],
             variable_along=items[1],
         )
+
+    def rotate_declaration(self, items):
+        return ArcaneRotate(id=gen_id(), variable=items[0], angle=items[1])
+
+    def scale_declaration(self, items):
+        return ArcaneScale(id=gen_id(), variable=items[0], factor=items[1])
 
     @filter_none
     def style_block(self, items):

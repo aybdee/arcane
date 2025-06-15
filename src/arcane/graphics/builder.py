@@ -12,7 +12,8 @@ from arcane.core.models.constructs import (AbsoluteCoordinatePosition,
                                            ArcaneMoveAlong, ArcanePoint,
                                            ArcanePolygon, ArcaneRays,
                                            ArcaneRectangle,
-                                           ArcaneRegularPolygon, ArcaneSquare,
+                                           ArcaneRegularPolygon, ArcaneRotate,
+                                           ArcaneScale, ArcaneSquare,
                                            ArcaneText, MathFunction,
                                            ObjectTransform,
                                            ParametricMathFunction,
@@ -63,6 +64,8 @@ SceneObject = (
     | ArcaneLens
     | ArcaneMove
     | ArcaneMoveAlong
+    | ArcaneScale
+    | ArcaneRotate
 )
 
 
@@ -317,6 +320,36 @@ class SceneBuilder:
                             phase=AnimationPhase.PRIMARY,
                         )
                     )
+
+        elif isinstance(node.value, ArcaneRotate):
+            from_mobject = self.dependency_tree[node.value.variable.id].mobject
+            assert from_mobject is not None
+            self.animations.append(
+                AnimationItem(
+                    node.statement_index,
+                    animation=lambda: from_mobject.animate.rotate(
+                        node.value.angle  # type:ignore
+                    ),
+                    phase=AnimationPhase.PRIMARY,
+                    defer=True,
+                )
+            )
+            node.mobject = True
+
+        elif isinstance(node.value, ArcaneScale):
+            from_mobject = self.dependency_tree[node.value.variable.id].mobject
+            assert from_mobject is not None
+            self.animations.append(
+                AnimationItem(
+                    node.statement_index,
+                    animation=lambda: from_mobject.animate.scale(
+                        node.value.factor  # type:ignore
+                    ),
+                    phase=AnimationPhase.PRIMARY,
+                    defer=True,
+                )
+            )
+            node.mobject = True
 
         elif isinstance(node.value, ArcaneMoveAlong):
             mobject_to_move = self.dependency_tree[
@@ -757,7 +790,6 @@ class SceneBuilder:
 
             # Process pending animations
             for id in pending.keys():
-                print(f"resolving dependency {id}")
                 self.resolve_dependency(id)
 
             previous_pending = pending
