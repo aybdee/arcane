@@ -7,11 +7,12 @@ import numpy as np
 import sympy
 
 from arcane.core.models.constructs import (Animatable, Animation, ArcaneBrace,
-                                           ArcaneClearObject, ArcaneLine,
-                                           ArcaneMove, ArcaneMoveAlong,
-                                           ArcaneRotate, ArcaneScale,
-                                           ArcaneText, AxisBlock, Definition,
-                                           DirectAnimatable, Identifier,
+                                           ArcaneCharge, ArcaneClearObject,
+                                           ArcaneLine, ArcaneMove,
+                                           ArcaneMoveAlong, ArcaneRotate,
+                                           ArcaneScale, ArcaneText, AxisBlock,
+                                           Definition, DirectAnimatable,
+                                           ElectricFieldBlock, Identifier,
                                            MathFunction, ObjectTransform,
                                            ObjectTransformExpression,
                                            ParametricMathFunction, PolarBlock,
@@ -186,12 +187,12 @@ class ArcaneInterpreter:
                 return InterpreterMessage(InterpreterMessageType.SUCCESS)
             elif isinstance(current_statement, Animation):
                 return self.process_animation(current_statement, statement_index)
-            elif isinstance(current_statement, (AxisBlock, PolarBlock)):
-                plot_values = self._handle_plot_block(
-                    current_statement, statement_index
-                )
+            elif isinstance(
+                current_statement, (AxisBlock, PolarBlock, ElectricFieldBlock)
+            ):
+                values = self._handle_block(current_statement, statement_index)
                 self.instruction_pointer += len(current_statement.statements)
-                return plot_values
+                return values
 
             elif isinstance(current_statement, ArcaneClearObject):
                 # check if the object iss in the scene builder
@@ -321,10 +322,7 @@ class ArcaneInterpreter:
                 statement_index,
             )
 
-        elif isinstance(
-            instance,
-            DirectAnimatable,
-        ):
+        elif isinstance(instance, (DirectAnimatable, ArcaneCharge)):
             return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
                 (statement_index, instance)
             )
@@ -343,17 +341,11 @@ class ArcaneInterpreter:
             if statement.index == index:
                 return statement.value
 
-    def _handle_plot_block(
-        self, block: AxisBlock | PolarBlock, statement_index: int
+    def _handle_block(
+        self, block: AxisBlock | PolarBlock | ElectricFieldBlock, statement_index: int
     ) -> InterpreterMessage:
         """Handle an AxisBlock or PolarBlock statement"""
         processed_animations = []
-
-        expected_container = None
-        if isinstance(block, AxisBlock):
-            expected_container = "Axis"
-        elif isinstance(block, PolarBlock):
-            expected_container = "PolarPlane"
 
         for index in block.statements:
             current_statement = self.program.statements[index].value
@@ -363,11 +355,18 @@ class ArcaneInterpreter:
                     allowed_type="Animation",
                     gotten_type=type(current_statement).__name__,
                 )
+
             processed_animation = self.process_animation(current_statement, index)
             if processed_animation.data:
-                if isinstance(processed_animation.data, MathFunction):
+                if isinstance(block, (AxisBlock, PolarBlock)):
+                    expected_container = None
+                    if isinstance(block, AxisBlock):
+                        expected_container = "Axis"
+                    elif isinstance(block, PolarBlock):
+                        expected_container = "PolarPlane"
                     if processed_animation.data.container_type != expected_container:
                         InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
+
                 processed_animations.append(processed_animation.data)
 
         return InterpreterMessage(InterpreterMessageType.SUCCESS).with_data(
@@ -474,6 +473,20 @@ class ArcaneInterpreter:
                             )
                         self._add_object(data, index, default_dep=global_id)
 
+                    elif isinstance(data, ArcaneCharge):
+                        if not self.scene_builder.get("global_electric_field"):
+                            self.scene_builder.add_object(
+                                id="global_electric_field",
+                                statement_index=index,
+                                value=ElectricFieldBlock(
+                                    id=gen_id(), statements=[], _statements=[]
+                                ),
+                            )
+                        self._add_object(data, index)
+                        self.scene_builder.add_dependency(
+                            "global_electric_field", data.id
+                        )
+
                     elif isinstance(
                         data,
                         DirectAnimatable,
@@ -482,7 +495,21 @@ class ArcaneInterpreter:
 
                     elif isinstance(data, Tuple) and len(data) == 2:
                         block, animations = data
-                        self._add_plot_block_to_builder(index, block, animations)
+                        dependencies = []
+                        if isinstance(block, ElectricFieldBlock):
+                            for animation in animations:
+                                index, data = animation
+                                self._add_object(data, index)
+                                dependencies.append(data.id)
+
+                            self.scene_builder.add_object(
+                                id=block.id,
+                                value=block,
+                                statement_index=index,
+                                dependencies=dependencies,
+                            )
+                        else:
+                            self._add_plot_block_to_builder(index, block, animations)
 
             except InterpreterError as e:
                 raise e

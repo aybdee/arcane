@@ -6,18 +6,19 @@ from sympy import sympify
 from sympy.core.numbers import E, Float
 
 from arcane.core.models.constructs import (Animatable, Animation, ArcaneArrow,
-                                           ArcaneBrace, ArcaneCircle,
-                                           ArcaneClearObject, ArcaneElbow,
-                                           ArcaneLens, ArcaneLine, ArcaneMove,
-                                           ArcaneMoveAlong, ArcanePoint,
-                                           ArcanePolygon, ArcaneRays,
-                                           ArcaneRectangle,
+                                           ArcaneBrace, ArcaneCharge,
+                                           ArcaneCircle, ArcaneClearObject,
+                                           ArcaneElbow, ArcaneLens, ArcaneLine,
+                                           ArcaneMove, ArcaneMoveAlong,
+                                           ArcanePoint, ArcanePolygon,
+                                           ArcaneRays, ArcaneRectangle,
                                            ArcaneRegularPolygon, ArcaneRotate,
                                            ArcaneScale, ArcaneSquare,
                                            ArcaneText, AxisBlock,
                                            CircleDefinition,
                                            CoordinateAngleLength, Definition,
-                                           Direction, Identifier, MathFunction,
+                                           Direction, ElectricFieldBlock,
+                                           Identifier, MathFunction,
                                            ObjectTransformExpression,
                                            ParametricMathFunction, PolarBlock,
                                            PolarMathFunction,
@@ -64,11 +65,12 @@ class ArcaneTransfomer(Transformer):
         statements = []
         statement_index = 0
         for current_statement in statement_pieces:
-            if isinstance(current_statement, (AxisBlock, PolarBlock)):
+            if isinstance(
+                current_statement, (AxisBlock, PolarBlock, ElectricFieldBlock)
+            ):
                 statement_indices = []
                 block_index = statement_index
                 for statement in current_statement._statements:
-                    print(block_index)
                     statement_index += 1
                     statements.append(Statement(index=statement_index, value=statement))
                     statement_indices.append(statement_index)
@@ -112,6 +114,7 @@ class ArcaneTransfomer(Transformer):
                     ArcaneArrow,
                     ArcaneLens,
                     ArcaneRays,
+                    ArcaneCharge,
                 ),
             ):
                 assert name is not None
@@ -184,6 +187,19 @@ class ArcaneTransfomer(Transformer):
 
     def show_declaration(self, items):
         return items[0]
+
+    @filter_none
+    def electric_field_declaration(self, items):
+        identifier = None
+        animations = []
+        for item in items:
+            if isinstance(item, Identifier):
+                identifier = item
+            else:
+                animations.append(item)
+        assert identifier is not None
+
+        return ElectricFieldBlock(id=gen_id(), _statements=list(flatten(animations)))
 
     @filter_none
     def polar_declaration(self, items):
@@ -525,6 +541,9 @@ class ArcaneTransfomer(Transformer):
 
     def animatable(self, items):
         return items
+
+    def charge_declaration(self, items):
+        return ArcaneCharge(id=gen_id(), position=items[1], magnitude=items[0])
 
     def move_declaration(self, items):
         return ArcaneMove(id=gen_id(), variable=items[0], position_to=items[1])

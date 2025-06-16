@@ -32,7 +32,8 @@ def construct_scene(scene_builder: SceneBuilder):
                 ]
                 if items_to_add:
                     for item in items_to_add:
-                        self.add(item.animation, **item.config)
+                        if not item.defer:
+                            self.add(item.animation, **item.config)
 
                 # Then play animations for this phase
                 items_to_animate = [
@@ -54,5 +55,11 @@ def construct_scene(scene_builder: SceneBuilder):
                         ],
                         **{k: v for item in item_group for k, v in item.config.items()},
                     )
+
+                for item in items_to_add:
+                    if item.defer:
+                        self.add(item.animation, **item.config)
+
+            self.wait(1)
 
     return ArcaneScene

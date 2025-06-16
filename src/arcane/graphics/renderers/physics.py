@@ -1,7 +1,10 @@
 from manim import *
 
-from arcane.core.models.constructs import (ArcaneLens, ArcaneRays, Direction,
+from arcane.core.models.constructs import (ArcaneCharge, ArcaneLens,
+                                           ArcaneRays, Direction,
                                            PropagateRays)
+from arcane.graphics.custom_mobjects.electrostatics import (Charge,
+                                                            ElectricField)
 from arcane.graphics.custom_mobjects.lens import Lens
 from arcane.graphics.custom_mobjects.rays import Ray
 from arcane.graphics.utils.manim import (apply_positioning, get_random_color,
@@ -14,6 +17,16 @@ def render_lens(lens: ArcaneLens, **kwargs):
     if lens.style and lens.style.fill:
         lens_style["color"] = map_color_string(lens.style.fill)
     return Lens(f=lens.focal_length, d=lens.thickness, **lens_style)
+
+
+@apply_positioning
+def render_charge(charge: ArcaneCharge, **kwargs):
+    return Charge(charge.magnitude)
+
+
+def render_electric_field(charges: List[Charge], **kwargs):
+    field = always_redraw(lambda: ElectricField(*charges))
+    return field
 
 
 def render_rays(rays: ArcaneRays):

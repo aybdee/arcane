@@ -345,6 +345,7 @@ class Definition:
         | ArcaneArrow
         | ArcaneLens
         | ArcaneRays
+        | ArcaneCharge
     )
 
 
@@ -354,6 +355,20 @@ class ArcaneBrace:
     variable: Identifier
     text: str
     is_latex: bool
+
+
+@dataclass
+class ArcaneCharge:
+    id: str
+    position: Position
+    magnitude: float
+
+
+@dataclass
+class ElectricFieldBlock:
+    id: str
+    _statements: List[any]
+    statements: List[int] = field(default_factory=list)
 
 
 @dataclass
@@ -378,7 +393,14 @@ class Program:
 @dataclass
 class Statement:
     index: int
-    value: Definition | Animation | AxisBlock | PolarBlock | ArcaneClearObject
+    value: (
+        Definition
+        | Animation
+        | AxisBlock
+        | PolarBlock
+        | ArcaneClearObject
+        | ElectricFieldBlock
+    )
 
 
 @dataclass

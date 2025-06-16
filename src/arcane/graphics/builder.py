@@ -7,15 +7,16 @@ from manim import *
 import arcane.graphics.config
 from arcane.core.models.constructs import (AbsoluteCoordinatePosition,
                                            ArcaneArrow, ArcaneBrace,
-                                           ArcaneCircle, ArcaneClearObject,
-                                           ArcaneElbow, ArcaneLens, ArcaneLine,
-                                           ArcaneMove, ArcaneMoveAlong,
-                                           ArcanePoint, ArcanePolygon,
-                                           ArcaneRays, ArcaneRectangle,
+                                           ArcaneCharge, ArcaneCircle,
+                                           ArcaneClearObject, ArcaneElbow,
+                                           ArcaneLens, ArcaneLine, ArcaneMove,
+                                           ArcaneMoveAlong, ArcanePoint,
+                                           ArcanePolygon, ArcaneRays,
+                                           ArcaneRectangle,
                                            ArcaneRegularPolygon, ArcaneRotate,
                                            ArcaneScale, ArcaneSquare,
-                                           ArcaneText, MathFunction,
-                                           ObjectTransform,
+                                           ArcaneText, ElectricFieldBlock,
+                                           MathFunction, ObjectTransform,
                                            ParametricMathFunction,
                                            PolarMathFunction, Position,
                                            PropagateRays, RegularMathFunction,
@@ -37,7 +38,9 @@ from arcane.graphics.renderers.graph import (render_math_function,
                                              render_sweep_dot,
                                              render_vlines_to_function)
 from arcane.graphics.renderers.misc import render_text
-from arcane.graphics.renderers.physics import render_lens, render_rays
+from arcane.graphics.renderers.physics import (render_charge,
+                                               render_electric_field,
+                                               render_lens, render_rays)
 from arcane.graphics.utils.manim import get_relative_position
 from arcane.graphics.utils.math import (compute_point_on_circle,
                                         generate_math_function)
@@ -66,6 +69,9 @@ SceneObject = (
     | ArcaneMoveAlong
     | ArcaneScale
     | ArcaneRotate
+    | ArcaneBrace
+    | ArcaneCharge
+    | ElectricFieldBlock
 )
 
 
@@ -493,8 +499,6 @@ class SceneBuilder:
 
             else:
                 to_object = self.dependency_tree[to_object_id]
-                print(from_object.mobject)
-                print(to_object.mobject)
                 if not node.is_background:
                     self.animations.append(
                         AnimationItem(
@@ -674,6 +678,44 @@ class SceneBuilder:
                         node.statement_index,
                         animation=Create(rectangle_mobject),
                         phase=AnimationPhase.PRIMARY,
+                    )
+                )
+
+        elif isinstance(node.value, ElectricFieldBlock):
+            for charge_id in node.dependencies:
+                print(self.dependency_tree[charge_id])
+            charge_mobjects = [
+                self.dependency_tree[charge_id].mobject
+                for charge_id in node.dependencies
+                if isinstance(self.dependency_tree[charge_id].mobject, Mobject)
+            ]
+
+            for charge in charge_mobjects:
+                assert charge is not None
+
+            field_mobject = render_electric_field(charge_mobjects)  # type:ignore
+
+            self.animations.append(
+                AnimationItem(
+                    node.statement_index,
+                    animation=field_mobject,
+                    phase=AnimationPhase.PRIMARY,
+                    animate=False,
+                )
+            )
+
+            node.mobject = field_mobject
+
+        elif isinstance(node.value, ArcaneCharge):
+            mobject = render_charge(node.value, relative_mobject=node.relative_mobject)
+            node.mobject = mobject
+            if not node.is_background:
+                self.animations.append(
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(mobject),
+                        phase=AnimationPhase.PRIMARY,
+                        animate=True,
                     )
                 )
 
