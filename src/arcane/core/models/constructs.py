@@ -349,6 +349,14 @@ class Definition:
 
 
 @dataclass
+class ArcaneBrace:
+    id: str
+    variable: Identifier
+    text: str
+    is_latex: bool
+
+
+@dataclass
 class AxisBlock:
     id: str
     _statements: List[any]
@@ -386,28 +394,6 @@ class VLines:
 MathFunction = RegularMathFunction | ParametricMathFunction | PolarMathFunction
 MathTransform = SweepTransform
 Transform = MathTransform | SweepDot
-Animatable = (
-    Identifier
-    | MathFunction
-    | VLines
-    | ArcaneText
-    | SweepDot
-    | ArcaneLine
-    | ArcanePoint
-    | ArcaneElbow
-    | ArcaneSquare
-    | ArcaneRectangle
-    | ArcaneRegularPolygon
-    | ArcanePolygon
-    | ArcaneCircle
-    | ArcaneArrow
-    | ObjectTransform
-    | ArcaneLens
-    | PropagateRays
-    | ArcaneMove
-    | ArcaneMoveAlong
-    | ArcaneScale
-)
 
 DirectAnimatableType = (
     VLines
@@ -430,7 +416,11 @@ DirectAnimatableType = (
     | ArcaneMoveAlong
     | ArcaneScale
     | ArcaneRotate
+    | ArcaneBrace
 )
+
+
+Animatable = Identifier | MathFunction | DirectAnimatableType
 
 
 DirectAnimatable = (
@@ -454,6 +444,7 @@ DirectAnimatable = (
     ArcaneMoveAlong,
     ArcaneScale,
     ArcaneRotate,
+    ArcaneBrace,
 )
 
 ########### end union type definitions

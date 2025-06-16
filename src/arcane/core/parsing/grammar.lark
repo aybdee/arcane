@@ -95,7 +95,7 @@ ray_declaration: "rays" sweep_coordinates "with" "direction" DIRECTION ["and"] "
 
 // Animation declarations
 animate_declaration: "@" animatable
-animatable: (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | arrow_declaration |line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration | circle_declaration | lens_declaration | propagate_rays | move_declaration | move_along_declaration | scale_declaration | rotate_declaration )
+animatable: (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | arrow_declaration |line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration | circle_declaration | lens_declaration | propagate_rays | move_declaration | move_along_declaration | scale_declaration | rotate_declaration | brace_label_declaration)
 clear_declaration: "clear" IDENT
 propagate_rays: "propagate" IDENT "through" IDENT [("then" IDENT)*]
 
@@ -113,6 +113,7 @@ write_declaration: "write" write_value position ["with" font_option ("," font_op
 write_value: STRING | latex
 latex: "latex" STRING
 font_option: FONT_OPTION_KEY font_option_value
+brace_label_declaration: "brace" "on" IDENT "with" ["text"] write_value
 
 // ==============================================================================
 // COORDINATE SYSTEMS

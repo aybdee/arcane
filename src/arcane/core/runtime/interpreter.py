@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 import numpy as np
 import sympy
 
-from arcane.core.models.constructs import (Animatable, Animation,
+from arcane.core.models.constructs import (Animatable, Animation, ArcaneBrace,
                                            ArcaneClearObject, ArcaneLine,
                                            ArcaneMove, ArcaneMoveAlong,
                                            ArcaneRotate, ArcaneScale,
@@ -418,7 +418,7 @@ class ArcaneInterpreter:
         elif isinstance(obj, ArcaneMoveAlong):
             dep = [obj.variable_to_move.id, obj.variable_along.id]
 
-        elif isinstance(obj, (ArcaneScale, ArcaneRotate)):
+        elif isinstance(obj, (ArcaneScale, ArcaneRotate, ArcaneBrace)):
             dep = [obj.variable.id]
 
         elif isinstance(obj, PropagateRays):

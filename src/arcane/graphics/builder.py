@@ -6,12 +6,12 @@ from manim import *
 
 import arcane.graphics.config
 from arcane.core.models.constructs import (AbsoluteCoordinatePosition,
-                                           ArcaneArrow, ArcaneCircle,
-                                           ArcaneClearObject, ArcaneElbow,
-                                           ArcaneLens, ArcaneLine, ArcaneMove,
-                                           ArcaneMoveAlong, ArcanePoint,
-                                           ArcanePolygon, ArcaneRays,
-                                           ArcaneRectangle,
+                                           ArcaneArrow, ArcaneBrace,
+                                           ArcaneCircle, ArcaneClearObject,
+                                           ArcaneElbow, ArcaneLens, ArcaneLine,
+                                           ArcaneMove, ArcaneMoveAlong,
+                                           ArcanePoint, ArcanePolygon,
+                                           ArcaneRays, ArcaneRectangle,
                                            ArcaneRegularPolygon, ArcaneRotate,
                                            ArcaneScale, ArcaneSquare,
                                            ArcaneText, MathFunction,
@@ -320,6 +320,31 @@ class SceneBuilder:
                             phase=AnimationPhase.PRIMARY,
                         )
                     )
+        elif isinstance(node.value, ArcaneBrace):
+            mobject_to_label = self.dependency_tree[
+                node.value.variable.id  # type:ignore
+            ].mobject  # type:ignore
+            assert mobject_to_label is not None
+            brace = Brace(mobject_to_label)
+            if node.value.is_latex:
+                text = brace.get_tex(node.value.text)
+            else:
+                text = brace.get_text(node.value.text)
+            self.animations.extend(
+                [
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Create(brace),
+                        phase=AnimationPhase.PRIMARY,
+                    ),
+                    AnimationItem(
+                        node.statement_index,
+                        animation=Write(text),
+                        phase=AnimationPhase.PRIMARY,
+                    ),
+                ]
+            )
+            node.mobject = brace
 
         elif isinstance(node.value, ArcaneRotate):
             from_mobject = self.dependency_tree[node.value.variable.id].mobject

@@ -6,11 +6,12 @@ from sympy import sympify
 from sympy.core.numbers import E, Float
 
 from arcane.core.models.constructs import (Animatable, Animation, ArcaneArrow,
-                                           ArcaneCircle, ArcaneClearObject,
-                                           ArcaneElbow, ArcaneLens, ArcaneLine,
-                                           ArcaneMove, ArcaneMoveAlong,
-                                           ArcanePoint, ArcanePolygon,
-                                           ArcaneRays, ArcaneRectangle,
+                                           ArcaneBrace, ArcaneCircle,
+                                           ArcaneClearObject, ArcaneElbow,
+                                           ArcaneLens, ArcaneLine, ArcaneMove,
+                                           ArcaneMoveAlong, ArcanePoint,
+                                           ArcanePolygon, ArcaneRays,
+                                           ArcaneRectangle,
                                            ArcaneRegularPolygon, ArcaneRotate,
                                            ArcaneScale, ArcaneSquare,
                                            ArcaneText, AxisBlock,
@@ -527,6 +528,12 @@ class ArcaneTransfomer(Transformer):
 
     def move_declaration(self, items):
         return ArcaneMove(id=gen_id(), variable=items[0], position_to=items[1])
+
+    def brace_label_declaration(self, items):
+        is_latex = items[1].startswith("latex")
+        return ArcaneBrace(
+            id=gen_id(), variable=items[0], text=items[1], is_latex=is_latex
+        )
 
     def move_along_declaration(self, items):
         return ArcaneMoveAlong(
