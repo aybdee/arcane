@@ -9,7 +9,7 @@ from manim_physics import SpaceScene
 import arcane.graphics.config
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from arcane.graphics.builder import SceneBuilder
-from arcane.graphics.layout import layout_horizontal, scale_to_fit_screen
+from arcane.graphics.layout import layout_horizontal, scale_to_fit_screen, layout_grid
 from arcane.utils import group_while
 
 
@@ -19,7 +19,10 @@ def construct_scene(scene_builder: SceneBuilder):
 
             scene_container = scene_builder.build()
 
-            layout_horizontal(scene_builder.groups)
+            if len(scene_builder.groups) < 3:
+                layout_horizontal(scene_builder.groups)
+            else:
+                layout_grid(scene_builder.groups, 3, 3)
             container_group = VGroup(*scene_builder.groups)
             scale_to_fit_screen(scene_container)
 

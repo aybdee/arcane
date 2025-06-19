@@ -35,8 +35,11 @@ def render_line(
     elif isinstance(line.definition, SweepObjects):
         assert from_object is not None
         assert to_object is not None
+        rendered_line = always_redraw(
+            lambda: Line(start=from_object.get_center(), end=to_object.get_center())
+        )
+        return rendered_line
 
-        return Line(start=from_object.get_center(), end=to_object.get_center())
     else:
         direction = np.array(
             [np.cos(line.definition.angle), np.sin(line.definition.angle), 0]

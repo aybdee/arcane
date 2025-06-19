@@ -809,8 +809,6 @@ class SceneBuilder:
                     )
 
     def build(self) -> VGroup:
-        pprint(self.dependency_tree)
-
         def get_pending_animations() -> OrderedDict[str, DependencyNode]:
             pending = OrderedDict()
 
