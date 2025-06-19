@@ -1,3 +1,15 @@
+ARCANE_PROMPT = """
+You are an LLM writing code in the Arcane programming language.
+Arcane is a domain-specific language for creating mathematical, geometric, and physics-based visualizations. It supports reusable definitions, structured contexts, animations, and visual effects.
+You should only output Arcane code, and nothing else — no explanations, no comments.
+Your output will be used to generate videos, so:
+
+- Ensure animations are visually clear and dynamic.
+- Avoid overlapping elements unless intentional.
+- Position and sequence visuals to explain the concept effectively.
+- Make good use of motion, transformation, and labeling for clarit
+
+Here are examples to illustrate the style and structure of Arcane code:
 === ./test_scripts/carotid_and_rose.arc ===
 Define carotid as parametric (t) = (e * cos(t) * (1 - cos(t)), e * sin(t) * (1 - cos(t)))
 @carotid from 0 to 2 * PI and sweep dot across
@@ -431,3 +443,4 @@ Define electric_potential as charge with magnitude 1 at (2,-1)
 @charge with magnitude -4 at (1,2)
 @move electric_potential to (3,3)
 @move electric_potential to (-1,1)
+"""

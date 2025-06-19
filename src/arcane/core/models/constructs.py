@@ -15,6 +15,7 @@ class RelativePositionPlacement(Enum):
     RIGHT = "RIGHT"
     ABOVE = "ABOVE"
     BELOW = "BELOW"
+    CENTER = "CENTER"
 
 
 class Direction(Enum):

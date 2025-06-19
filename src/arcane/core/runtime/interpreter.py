@@ -364,7 +364,8 @@ class ArcaneInterpreter:
                         expected_container = "Axis"
                     elif isinstance(block, PolarBlock):
                         expected_container = "PolarPlane"
-                    if processed_animation.data.container_type != expected_container:
+                    index, container_type = processed_animation.data
+                    if container_type != expected_container:
                         InterpreterError(InterpreterErrorCode.UNSUPPORTED_PLOT)
 
                 processed_animations.append(processed_animation.data)
@@ -406,12 +407,17 @@ class ArcaneInterpreter:
 
         elif isinstance(obj, ArcaneLine):
             if isinstance(obj.definition, SweepObjects):
-                dep = [obj.definition.sweep_from, obj.definition.sweep_to]
+                dep = [
+                    obj.definition.sweep_from.id,  # type:ignore
+                    obj.definition.sweep_to.id,  # type:ignore
+                ]  # type:ignore
                 for point_id in dep:
                     if not self.scene_builder.get(point_id):
                         point = self.store.get_or_throw(point_id)
                         self.scene_builder.add_object(
-                            id=point_id, value=point, statement_index=statement_index
+                            id=point_id.value,
+                            value=point,
+                            statement_index=statement_index,
                         )
 
         elif isinstance(obj, ArcaneMoveAlong):

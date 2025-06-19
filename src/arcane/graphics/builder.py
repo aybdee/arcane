@@ -294,10 +294,10 @@ class SceneBuilder:
         elif isinstance(node.value, ArcaneLine):
             if isinstance(node.value.definition, SweepObjects):
                 from_node = self.dependency_tree[
-                    node.value.definition.sweep_from
+                    node.value.definition.sweep_from.value  # type:ignore
                 ]  # type:ignore
                 to_node = self.dependency_tree[
-                    node.value.definition.sweep_to
+                    node.value.definition.sweep_to.value  # type:ignore
                 ]  # type:ignore
 
                 assert from_node.mobject is not None
@@ -809,6 +809,8 @@ class SceneBuilder:
                     )
 
     def build(self) -> VGroup:
+        pprint(self.dependency_tree)
+
         def get_pending_animations() -> OrderedDict[str, DependencyNode]:
             pending = OrderedDict()
 

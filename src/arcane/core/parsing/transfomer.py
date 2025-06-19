@@ -386,6 +386,9 @@ class ArcaneTransfomer(Transformer):
     def TAN(self, _):
         return "tan"
 
+    def ATAN(self, _):
+        return "atan"
+
     def PI(self, _):
         return PI
 
@@ -434,6 +437,8 @@ class ArcaneTransfomer(Transformer):
             return RelativePositionPlacement.ABOVE
         elif value == "left of":
             return RelativePositionPlacement.LEFT
+        elif value == "center of":
+            return RelativePositionPlacement.CENTER
         else:
             return RelativePositionPlacement.RIGHT
 

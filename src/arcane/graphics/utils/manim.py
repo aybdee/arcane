@@ -89,6 +89,9 @@ def apply_positioning(func):
                     mobject = mobject.next_to(
                         relative_mobject, direction_map[placement]
                     )
+                elif placement == RelativePositionPlacement.CENTER:
+                    mobject = mobject.move_to(relative_mobject.get_center())
+
             elif isinstance(position, tuple):
                 mobject.move_to(np.array([*position, 0]))
 

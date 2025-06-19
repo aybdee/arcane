@@ -11,7 +11,6 @@ Define smaller_square as square with length 0.2 at (0, 0)
 clear square_2
 clear rectangle
 
-
 @carotid from 0 to 2 * PI
 @move smaller_square along carotid
 
