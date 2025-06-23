@@ -7,7 +7,6 @@ on axis axis_one {
   @f(x) = x ^ 2 from -2 to 2 and sweep dot across
 }
 
-
 on axis axis_two { 
   @f(x) = x ^ 2 from -2 to 2 and sweep dot across
 }

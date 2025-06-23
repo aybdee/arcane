@@ -7,7 +7,7 @@ start : program
 program : (statement | COMMENT)* 
 
 // Main statement types
-statement : definition | animate_declaration | clear_declaration |axis_declaration | polar_declaration | electric_field_declaration NEWLINE
+statement : definition | animate_declaration | clear_declaration |axis_declaration | polar_declaration | electric_field_declaration | for_declaration NEWLINE
 
 // Variable and function definitions
 definition : "Define" IDENT "as" (expression | line_declaration | lens_declaration | arrow_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | circle_declaration | ray_declaration | charge_declaration )
@@ -94,7 +94,7 @@ ray_declaration: "rays" sweep_coordinates "with" "direction" DIRECTION ["and"] "
 // ==============================================================================
 
 // Animation declarations
-animate_declaration: "@" animatable
+animate_declaration: "@" ["show" | "animate"] animatable
 animatable: (((IDENT | ((IDENT | math_function | show_declaration) math_transform) ) ["and" sweep_dot]) | write_declaration | arrow_declaration |line_declaration | point_declaration | angle_declaration | square_declaration | rectangle_declaration | regular_polygon_declaration | polygon_declaration | transform_declaration | circle_declaration | lens_declaration | propagate_rays | move_declaration | move_along_declaration | scale_declaration | rotate_declaration | brace_label_declaration | charge_declaration)
 clear_declaration: "clear" IDENT
 propagate_rays: "propagate" IDENT "through" IDENT [("then" IDENT)*]
@@ -123,6 +123,7 @@ brace_label_declaration: "brace" "on" IDENT "with" ["text"] write_value
 axis_declaration: "on" "axis" IDENT "{" (animate_declaration NEWLINE)* "}"
 polar_declaration: "on" "polar" IDENT "{" (animate_declaration NEWLINE)* "}"
 electric_field_declaration: "on" "electric field" IDENT "{" (animate_declaration NEWLINE)* "}"
+for_declaration: "for" IDENT "from" numerical_expression "to" numerical_expression "{" (animate_declaration NEWLINE)* "}"
 
 // ==============================================================================
 // TRANSFORMATIONS AND UTILITIES

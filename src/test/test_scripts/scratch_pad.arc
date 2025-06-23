@@ -9,7 +9,7 @@ Define inner_shape as regular polygon with radius 2 and sides 6 at (0,0)
 @inner_shape
 
 # Add measurements and labels
-@write "Center" below center with size 16
-@write "Hexagon" above inner_shape with size 18
+@write "Center" below center with size 13
+@write "Hexagon" above inner_shape with size 15
 # @line from center to (2,0)
 @write "r = 2" at (1,0.2) with size 14

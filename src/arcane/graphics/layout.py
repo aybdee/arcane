@@ -1,34 +1,27 @@
 from manim import *
 
 
-def layout_horizontal(objects: List[Mobject], spacing=0.5):
-    """Layout objects horizontally with proper spacing based on their width."""
-    if not objects:
-        return
-    
-    current_x = 0
-    for obj in objects:
-        # Get the width of the current object
-        obj_width = obj.get_width()
-        # Position the object at current_x + half its width
-        obj.move_to(RIGHT * (current_x + obj_width / 2))
-        # Move to the next position: current position + full width + spacing
-        current_x += obj_width + spacing
+def layout_horizontal(objects: List[Mobject]):
+    if objects:
+        current_object = objects[0]
+        for object in objects[1:]:
+            object.next_to(current_object)
+            current_object = object
 
 
 def layout_grid(objects: List[Mobject], rows: int, cols: int, spacing=0.5):
     """Layout objects in a grid with proper spacing based on their dimensions."""
     if not objects:
         return
-    
+
     # Calculate the maximum width and height needed for each cell
     max_width = max(obj.get_width() for obj in objects) if objects else 0
     max_height = max(obj.get_height() for obj in objects) if objects else 0
-    
+
     # Add spacing to cell dimensions
     cell_width = max_width + spacing
     cell_height = max_height + spacing
-    
+
     for i in range(rows):
         for j in range(cols):
             index = i * cols + j
@@ -37,7 +30,7 @@ def layout_grid(objects: List[Mobject], rows: int, cols: int, spacing=0.5):
                 # Calculate position: start from top-left, move right by j cells, down by i cells
                 x_pos = j * cell_width
                 y_pos = -i * cell_height  # Negative because Y increases upward in Manim
-                
+
                 # Center the object within its cell
                 obj.move_to(RIGHT * x_pos + UP * y_pos)
 

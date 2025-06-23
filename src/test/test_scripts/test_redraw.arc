@@ -9,3 +9,4 @@ Define C as point at (2, 3)
 @move C to (2, 0) 
 @move C to (2, 4) 
 @move C to (2, 3) 
+

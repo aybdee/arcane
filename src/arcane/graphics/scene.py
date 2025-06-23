@@ -9,7 +9,8 @@ from manim_physics import SpaceScene
 import arcane.graphics.config
 from arcane.graphics.animation import AnimationItem, AnimationPhase
 from arcane.graphics.builder import SceneBuilder
-from arcane.graphics.layout import layout_horizontal, scale_to_fit_screen, layout_grid
+from arcane.graphics.layout import (layout_grid, layout_horizontal,
+                                    scale_to_fit_screen)
 from arcane.utils import group_while
 
 
@@ -63,6 +64,6 @@ def construct_scene(scene_builder: SceneBuilder):
                     if item.defer:
                         self.add(item.animation, **item.config)
 
-            self.wait(1)
+            self.wait(0.5)
 
     return ArcaneScene

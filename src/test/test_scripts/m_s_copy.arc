@@ -14,7 +14,6 @@ on axis one_more {
   @show 10 vertical lines on simple_equation from -1 to 1
 }
 
-
 on axis even_one_more { 
   @f(x) = x ^ 2 from -2 to 2 and sweep dot across
 }

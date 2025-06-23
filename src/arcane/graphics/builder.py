@@ -682,8 +682,6 @@ class SceneBuilder:
                 )
 
         elif isinstance(node.value, ElectricFieldBlock):
-            for charge_id in node.dependencies:
-                print(self.dependency_tree[charge_id])
             charge_mobjects = [
                 self.dependency_tree[charge_id].mobject
                 for charge_id in node.dependencies

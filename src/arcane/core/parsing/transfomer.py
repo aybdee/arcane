@@ -34,6 +34,7 @@ from arcane.core.models.constructs import (Animatable, Animation, ArcaneArrow,
                                            SweepCoordinates, SweepDot,
                                            SweepObjects, SweepTransform,
                                            ThreePoint, VLines)
+from arcane.graphics.utils.math import substitute_sympy_expressions
 from arcane.utils import gen_id
 
 
@@ -568,6 +569,22 @@ class ArcaneTransfomer(Transformer):
 
     def rotate_declaration(self, items):
         return ArcaneRotate(id=gen_id(), variable=items[0], angle=items[1])
+
+    @filter_none
+    def for_declaration(self, items):
+        variable = items[0]
+        start = items[1]
+        stop = items[2]
+        statements = items[3:]
+
+        evaluated_statements = []
+        for i in range(int(start), int(stop)):
+            evaluated_value = substitute_sympy_expressions(
+                statements, variable.value, i
+            )
+            evaluated_statements.append(evaluated_value)
+
+        return evaluated_statements
 
     def scale_declaration(self, items):
         return ArcaneScale(id=gen_id(), variable=items[0], factor=items[1])

@@ -386,7 +386,9 @@ class ArcaneInterpreter:
         elif isinstance(obj, SweepDot):
             dep = [obj.variable.value]
         elif isinstance(obj, ObjectTransform):
-            if not isinstance(obj.object_from, MathFunction):
+            if not isinstance(
+                obj.object_from, MathFunction
+            ) and not self.scene_builder.get(obj.object_from.id):
                 self.scene_builder.add_object(
                     id=obj.object_from.id,
                     statement_index=statement_index,
