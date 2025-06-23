@@ -190,18 +190,3 @@ The following mathematical constants are built into Arcane:
 
 - `PI`: π (3.14159...)
 - `e`: Euler's number (2.71828...)
-
-## Best Practices
-
-1. Use meaningful names for functions and axes
-2. Group related animations in the same axis block
-3. Add descriptive labels to help explain the visualization
-4. Use appropriate ranges for function plotting
-5. Combine different features to create engaging demonstrations
-
-## Getting Started
-
-1. Install Arcane
-2. Create a new .arc file
-3. Write your first animation using the examples above
-4. Run the file using the Arcane interpreter
