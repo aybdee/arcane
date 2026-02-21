@@ -7,6 +7,6 @@ fi
 
 
 filename="${1%}"
-source ~/random_projects/arcane/.venv/bin/activate
-python ~/random_projects/arcane/src/arcane/main.py $filename
+source ./.venv/bin/activate
+python ./src/arcane/main.py $filename
 
